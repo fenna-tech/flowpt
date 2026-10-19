@@ -1,5 +1,7 @@
 import type {
   AuditApi,
+  BackupApi,
+  DashboardApi,
   InvoiceApi,
   LockApi,
   NoteApi,
@@ -16,6 +18,8 @@ declare global {
       invoices: InvoiceApi
       settings: SettingsApi
       lock: LockApi
+      dashboard: DashboardApi
+      backup: BackupApi
     }
   }
 }

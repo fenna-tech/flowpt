@@ -21,10 +21,11 @@
     "build:linux": "electron-vite build && electron-builder --linux"
   },
   "dependencies": {
-    "@flowpt/shared": "*",
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
-    "better-sqlite3-multiple-ciphers": "^13.0.3"
+    "@flowpt/shared": "*",
+    "better-sqlite3-multiple-ciphers": "^13.0.3",
+    "recharts": "^3.10.1"
   },
   "devDependencies": {
     "@electron-toolkit/eslint-config-prettier": "^3.0.1",

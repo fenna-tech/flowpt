@@ -25,6 +25,8 @@ import {
   savePractitioner
 } from './db/settings'
 import { exportInvoicePdf } from './pdf'
+import { getDashboard } from './dashboard'
+import { exportBackup, restoreFromFile } from './backup'
 import {
   changePin,
   getTimeout,
@@ -87,6 +89,10 @@ export function registerIpc(): void {
   guarded('settings:removeProfile', (id: string) => removeProfile(id))
 
   guarded('audit:list', (patientId: string) => listAudit(patientId))
+
+  guarded('dashboard:get', () => getDashboard())
+  guarded('backup:export', (pin: string, passphrase: string) => exportBackup(pin, passphrase))
+  guarded('backup:restore', (pin: string, passphrase: string) => restoreFromFile(pin, passphrase))
 
   // Lock channels. Only status/setup/unlock work while locked.
   ipcMain.handle('lock:status', () => status())

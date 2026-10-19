@@ -283,10 +283,103 @@ function SecuritySettings(): React.JSX.Element {
   )
 }
 
+function BackupSettings(): React.JSX.Element {
+  const [pin, setPin] = useState('')
+  const [passphrase, setPassphrase] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [status, setStatus] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const describe = (counts?: Record<string, number>): string =>
+    counts
+      ? ` (${counts.patients} patients, ${counts.chart_notes} notes, ${counts.invoices} invoices)`
+      : ''
+
+  const run = async (
+    kind: 'export' | 'restore',
+    fn: () => Promise<{ saved: boolean; path?: string; counts?: Record<string, number> }>
+  ): Promise<void> => {
+    setBusy(true)
+    setStatus(kind === 'export' ? 'Encrypting…' : 'Restoring…')
+    try {
+      const res = await fn()
+      setStatus(
+        res.saved
+          ? `${kind === 'export' ? 'Backup saved' : 'Restored'}${describe(res.counts)}`
+          : 'Cancelled'
+      )
+      if (res.saved && kind === 'restore') window.location.reload()
+    } catch (err) {
+      setStatus(msg(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const exportIt = (): void => {
+    if (passphrase !== confirm) return setStatus('Backup passphrases do not match')
+    void run('export', () => window.api.backup.exportTo(pin, passphrase))
+  }
+  const restoreIt = (): void => {
+    if (!window.confirm('Restore from a backup file? Only possible on a fresh install.')) return
+    void run('restore', () => window.api.backup.restoreFrom(pin, passphrase))
+  }
+
+  return (
+    <div className="max-w-xl space-y-3">
+      <h2 className="text-xl font-semibold">Backup &amp; restore</h2>
+      <p className="text-sm text-slate-500">
+        Backups are encrypted with a backup passphrase (separate from your PIN) and can be restored
+        on any computer. Without the passphrase the file cannot be opened, and it cannot be
+        recovered. Restore only works on a fresh install with no patient data.
+      </p>
+      <input
+        className={inputCls}
+        type="password"
+        placeholder="Your app PIN (to confirm)"
+        value={pin}
+        onChange={(e) => setPin(e.target.value)}
+      />
+      <input
+        className={inputCls}
+        type="password"
+        placeholder="Backup passphrase (8+ characters)"
+        value={passphrase}
+        onChange={(e) => setPassphrase(e.target.value)}
+      />
+      <input
+        className={inputCls}
+        type="password"
+        placeholder="Confirm backup passphrase (export only)"
+        value={confirm}
+        onChange={(e) => setConfirm(e.target.value)}
+      />
+      <div className="flex items-center gap-2">
+        <button
+          disabled={busy}
+          onClick={exportIt}
+          className="rounded bg-blue-600 px-4 py-1.5 text-sm text-white hover:bg-blue-700 disabled:opacity-40"
+        >
+          Export backup
+        </button>
+        <button
+          disabled={busy}
+          onClick={restoreIt}
+          className="rounded border border-slate-300 px-4 py-1.5 text-sm hover:bg-slate-50 disabled:opacity-40"
+        >
+          Restore from file
+        </button>
+        <span className="text-sm text-slate-500">{status}</span>
+      </div>
+    </div>
+  )
+}
+
 export function SettingsPanel(): React.JSX.Element {
   return (
     <div className="space-y-10">
       <SecuritySettings />
+      <BackupSettings />
       <PractitionerForm />
       <ProfilesManager />
     </div>

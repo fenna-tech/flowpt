@@ -1,6 +1,8 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type {
   AuditApi,
+  BackupApi,
+  DashboardApi,
   InvoiceApi,
   LockApi,
   LockStatus,
@@ -62,8 +64,24 @@ const lock: LockApi = {
   }
 }
 
+const dashboard: DashboardApi = { get: () => ipcRenderer.invoke('dashboard:get') }
+
+const backup: BackupApi = {
+  exportTo: (pin, passphrase) => ipcRenderer.invoke('backup:export', pin, passphrase),
+  restoreFrom: (pin, passphrase) => ipcRenderer.invoke('backup:restore', pin, passphrase)
+}
+
 const audit: AuditApi = {
   list: (patientId) => ipcRenderer.invoke('audit:list', patientId)
 }
 
-contextBridge.exposeInMainWorld('api', { patients, notes, audit, invoices, settings, lock })
+contextBridge.exposeInMainWorld('api', {
+  patients,
+  notes,
+  audit,
+  invoices,
+  settings,
+  lock,
+  dashboard,
+  backup
+})

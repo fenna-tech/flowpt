@@ -63,21 +63,17 @@ export function setup(name: string, pin: string): void {
   notify()
 }
 
-export function unlock(pin: string): { ok: boolean; retryAfterSec?: number } {
+// Checks a PIN with the shared failure counter and exponential backoff (30s, 60s ... 15 min).
+function attemptPin(pin: string): { ok: boolean; retryAfterSec?: number } {
   const now = Date.now()
   const until = Number(getSetting('lock_until') ?? '0')
   if (until > now) return { ok: false, retryAfterSec: Math.ceil((until - now) / 1000) }
 
   if (typeof pin === 'string' && verifyPin(pin)) {
     setSetting('lock_fails', '0')
-    unlocked = true
-    touch()
-    logAudit('app.unlock', 'app', 'app', null)
-    notify()
     return { ok: true }
   }
 
-  // Exponential backoff after repeated failures: 30s, 60s, 120s ... capped at 15 min.
   const fails = Number(getSetting('lock_fails') ?? '0') + 1
   setSetting('lock_fails', String(fails))
   logAudit('app.unlock_failed', 'app', 'app', null, `attempt ${fails}`)
@@ -87,6 +83,26 @@ export function unlock(pin: string): { ok: boolean; retryAfterSec?: number } {
     return { ok: false, retryAfterSec: delaySec }
   }
   return { ok: false }
+}
+
+// Re-confirms the PIN before sensitive actions (e.g. exporting a backup).
+export function confirmPin(pin: string): void {
+  const r = attemptPin(pin)
+  if (r.ok) return
+  throw new Error(
+    r.retryAfterSec ? `Too many attempts. Try again in ${r.retryAfterSec}s` : 'Incorrect PIN'
+  )
+}
+
+export function unlock(pin: string): { ok: boolean; retryAfterSec?: number } {
+  const r = attemptPin(pin)
+  if (r.ok) {
+    unlocked = true
+    touch()
+    logAudit('app.unlock', 'app', 'app', null)
+    notify()
+  }
+  return r
 }
 
 export function lockNow(reason: 'manual' | 'timeout' | 'system' = 'manual'): void {

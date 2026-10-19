@@ -4,6 +4,7 @@ import { NotesPanel } from './NotesPanel'
 import { AuditPanel } from './AuditPanel'
 import { InvoicesPanel } from './InvoicesPanel'
 import { SettingsPanel } from './SettingsPanel'
+import { Dashboard } from './Dashboard'
 import { LockScreen } from './LockScreen'
 import { useActivityPings, useLockStatus } from './lockHooks'
 
@@ -37,7 +38,7 @@ function Workspace(): React.JSX.Element {
   const [form, setForm] = useState<PatientInput>(empty)
   const [error, setError] = useState('')
   const [tab, setTab] = useState<'details' | 'notes' | 'invoices' | 'audit'>('details')
-  const [view, setView] = useState<'patients' | 'settings'>('patients')
+  const [view, setView] = useState<'dashboard' | 'patients' | 'settings'>('dashboard')
 
   const refresh = useCallback(() => window.api.patients.list(search).then(setPatients), [search])
   useEffect(() => {
@@ -56,6 +57,13 @@ function Workspace(): React.JSX.Element {
       setForm(empty)
       setSelectedId('new')
     }
+  }
+
+  const openPatientInvoices = async (patientId: string): Promise<void> => {
+    const p = await window.api.patients.get(patientId)
+    if (!p) return
+    select(p)
+    setTab('invoices')
   }
 
   const save = async (e: React.FormEvent): Promise<void> => {
@@ -119,6 +127,12 @@ function Workspace(): React.JSX.Element {
           )}
         </ul>
         <button
+          onClick={() => setView('dashboard')}
+          className="border-t border-slate-200 px-3 py-2 text-left text-sm text-slate-600 hover:bg-slate-100"
+        >
+          Dashboard
+        </button>
+        <button
           onClick={() => window.api.lock.lock()}
           className="border-t border-slate-200 px-3 py-2 text-left text-sm text-slate-600 hover:bg-slate-100"
         >
@@ -133,7 +147,9 @@ function Workspace(): React.JSX.Element {
       </aside>
 
       <main className="flex-1 overflow-y-auto p-6">
-        {view === 'settings' ? (
+        {view === 'dashboard' ? (
+          <Dashboard onOpenInvoice={openPatientInvoices} />
+        ) : view === 'settings' ? (
           <SettingsPanel />
         ) : selectedId === null ? (
           <p className="text-slate-500">Select a patient or create a new one.</p>

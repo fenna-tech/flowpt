@@ -237,3 +237,49 @@ export interface LockApi {
   changePin(oldPin: string, newPin: string): Promise<void>
   onChange(cb: (status: LockStatus) => void): () => void
 }
+
+// ---- Dashboard ----
+
+export interface OutstandingInvoice {
+  id: string
+  number: string
+  patientId: string
+  patientName: string
+  issueDate: string
+  totalCents: number
+  daysOutstanding: number
+}
+
+export interface MonthlyRevenue {
+  month: string // YYYY-MM
+  invoicedCents: number // by invoice date (issued + paid)
+  collectedCents: number // by payment date (paid)
+}
+
+export interface DashboardData {
+  outstanding: OutstandingInvoice[]
+  outstandingCents: number
+  over30Count: number
+  collectedThisMonthCents: number
+  collectedYtdCents: number
+  invoicedYtdCents: number
+  months: MonthlyRevenue[] // last 12 months, oldest first
+}
+
+export interface DashboardApi {
+  get(): Promise<DashboardData>
+}
+
+// ---- Encrypted backup ----
+
+export interface BackupResult {
+  saved: boolean
+  path?: string
+  counts?: Record<string, number>
+}
+
+export interface BackupApi {
+  // `pin` re-confirms the app PIN; `passphrase` encrypts the file and is needed to restore it.
+  exportTo(pin: string, passphrase: string): Promise<BackupResult>
+  restoreFrom(pin: string, passphrase: string): Promise<BackupResult>
+}
