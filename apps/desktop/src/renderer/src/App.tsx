@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import type { Patient, PatientInput } from '@flowpt/shared'
 import { NotesPanel } from './NotesPanel'
 import { AuditPanel } from './AuditPanel'
+import { InvoicesPanel } from './InvoicesPanel'
+import { SettingsPanel } from './SettingsPanel'
 
 const empty: PatientInput = {
   firstName: '',
@@ -32,7 +34,8 @@ function App(): React.JSX.Element {
   const [selectedId, setSelectedId] = useState<string | 'new' | null>(null)
   const [form, setForm] = useState<PatientInput>(empty)
   const [error, setError] = useState('')
-  const [tab, setTab] = useState<'details' | 'notes' | 'audit'>('details')
+  const [tab, setTab] = useState<'details' | 'notes' | 'invoices' | 'audit'>('details')
+  const [view, setView] = useState<'patients' | 'settings'>('patients')
 
   const refresh = useCallback(() => window.api.patients.list(search).then(setPatients), [search])
   useEffect(() => {
@@ -42,6 +45,7 @@ function App(): React.JSX.Element {
   const select = (p: Patient | null): void => {
     setError('')
     setTab('details')
+    setView('patients')
     if (p) {
       const { firstName, lastName, dob, phn, email, phone, address, notes } = p
       setForm({ firstName, lastName, dob, phn, email, phone, address, notes })
@@ -112,16 +116,24 @@ function App(): React.JSX.Element {
             <li className="px-3 py-4 text-sm text-slate-500">No patients yet.</li>
           )}
         </ul>
+        <button
+          onClick={() => setView('settings')}
+          className="border-t border-slate-200 px-3 py-2 text-left text-sm text-slate-600 hover:bg-slate-100"
+        >
+          Settings
+        </button>
       </aside>
 
       <main className="flex-1 overflow-y-auto p-6">
-        {selectedId === null ? (
+        {view === 'settings' ? (
+          <SettingsPanel />
+        ) : selectedId === null ? (
           <p className="text-slate-500">Select a patient or create a new one.</p>
         ) : (
           <>
             {selectedId !== 'new' && (
               <div className="mb-4 flex gap-1 border-b border-slate-200">
-                {(['details', 'notes', 'audit'] as const).map((t) => (
+                {(['details', 'notes', 'invoices', 'audit'] as const).map((t) => (
                   <button
                     key={t}
                     onClick={() => setTab(t)}
@@ -131,13 +143,22 @@ function App(): React.JSX.Element {
                         : 'text-slate-500 hover:text-slate-800'
                     }`}
                   >
-                    {t === 'notes' ? 'Chart notes' : t === 'audit' ? 'Audit log' : 'Details'}
+                    {
+                      {
+                        details: 'Details',
+                        notes: 'Chart notes',
+                        invoices: 'Invoices',
+                        audit: 'Audit log'
+                      }[t]
+                    }
                   </button>
                 ))}
               </div>
             )}
             {selectedId !== 'new' && tab === 'notes' ? (
               <NotesPanel key={selectedId} patientId={selectedId} />
+            ) : selectedId !== 'new' && tab === 'invoices' ? (
+              <InvoicesPanel key={selectedId} patientId={selectedId} />
             ) : selectedId !== 'new' && tab === 'audit' ? (
               <AuditPanel key={selectedId} patientId={selectedId} />
             ) : (

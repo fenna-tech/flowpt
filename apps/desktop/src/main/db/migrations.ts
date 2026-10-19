@@ -66,7 +66,53 @@ const MIGRATIONS: string[] = [
   CREATE TRIGGER audit_no_update BEFORE UPDATE ON audit_log
   BEGIN SELECT RAISE(ABORT, 'Audit log is append-only'); END;
   CREATE TRIGGER audit_no_delete BEFORE DELETE ON audit_log
-  BEGIN SELECT RAISE(ABORT, 'Audit log is append-only'); END;`
+  BEGIN SELECT RAISE(ABORT, 'Audit log is append-only'); END;`,
+  // Billing: settings, custom billing profiles, invoices (locked once issued).
+  `CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+
+  CREATE TABLE billing_profiles (
+    id TEXT PRIMARY KEY,
+    definition TEXT NOT NULL, -- JSON (BillingProfile minus id/builtin)
+    created_at TEXT NOT NULL,
+    deleted_at TEXT
+  );
+
+  CREATE TABLE invoices (
+    id TEXT PRIMARY KEY,
+    number TEXT UNIQUE,
+    patient_id TEXT NOT NULL REFERENCES patients(id),
+    profile_id TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','issued','paid','void')),
+    issue_date TEXT NOT NULL,
+    payer_name TEXT NOT NULL DEFAULT '',
+    policy_number TEXT NOT NULL DEFAULT '',
+    items TEXT NOT NULL DEFAULT '[]', -- JSON: [{description,code,quantity,unitCents}]
+    tax_pct REAL NOT NULL DEFAULT 0,
+    notes TEXT NOT NULL DEFAULT '',
+    snapshot TEXT, -- JSON captured at issue time so the PDF is reproducible
+    paid_at TEXT,
+    payment_method TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT
+  );
+  CREATE INDEX idx_invoices_patient ON invoices(patient_id, issue_date);
+
+  CREATE TRIGGER invoices_locked BEFORE UPDATE ON invoices
+  WHEN OLD.status <> 'draft' AND (
+    NEW.number IS NOT OLD.number OR NEW.patient_id IS NOT OLD.patient_id OR
+    NEW.profile_id IS NOT OLD.profile_id OR NEW.issue_date IS NOT OLD.issue_date OR
+    NEW.payer_name IS NOT OLD.payer_name OR NEW.policy_number IS NOT OLD.policy_number OR
+    NEW.items IS NOT OLD.items OR NEW.tax_pct IS NOT OLD.tax_pct OR NEW.notes IS NOT OLD.notes OR
+    NEW.snapshot IS NOT OLD.snapshot OR NEW.deleted_at IS NOT OLD.deleted_at OR NEW.status = 'draft')
+  BEGIN SELECT RAISE(ABORT, 'Issued invoices cannot be modified; void instead'); END;
+
+  CREATE TRIGGER invoices_void_final BEFORE UPDATE ON invoices
+  WHEN OLD.status = 'void' AND NEW.status <> 'void'
+  BEGIN SELECT RAISE(ABORT, 'Void invoices are final'); END;
+
+  CREATE TRIGGER invoices_no_hard_delete BEFORE DELETE ON invoices
+  BEGIN SELECT RAISE(ABORT, 'Invoices cannot be hard-deleted'); END;`
 ]
 
 export function migrate(db: Database.Database): void {

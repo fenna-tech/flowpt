@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { AuditApi, NoteApi, PatientApi } from '@flowpt/shared'
+import type { AuditApi, InvoiceApi, NoteApi, PatientApi, SettingsApi } from '@flowpt/shared'
 
 const patients: PatientApi = {
   list: (search) => ipcRenderer.invoke('patients:list', search),
@@ -19,8 +19,27 @@ const notes: NoteApi = {
   remove: (id) => ipcRenderer.invoke('notes:remove', id)
 }
 
+const invoices: InvoiceApi = {
+  list: (patientId) => ipcRenderer.invoke('invoices:list', patientId),
+  create: (patientId, profileId) => ipcRenderer.invoke('invoices:create', patientId, profileId),
+  update: (id, input) => ipcRenderer.invoke('invoices:update', id, input),
+  issue: (id) => ipcRenderer.invoke('invoices:issue', id),
+  markPaid: (id, method, paidDate) => ipcRenderer.invoke('invoices:markPaid', id, method, paidDate),
+  void: (id) => ipcRenderer.invoke('invoices:void', id),
+  remove: (id) => ipcRenderer.invoke('invoices:remove', id),
+  exportPdf: (id) => ipcRenderer.invoke('invoices:exportPdf', id)
+}
+
+const settings: SettingsApi = {
+  getPractitioner: () => ipcRenderer.invoke('settings:getPractitioner'),
+  savePractitioner: (p) => ipcRenderer.invoke('settings:savePractitioner', p),
+  listProfiles: () => ipcRenderer.invoke('settings:listProfiles'),
+  saveProfile: (p) => ipcRenderer.invoke('settings:saveProfile', p),
+  removeProfile: (id) => ipcRenderer.invoke('settings:removeProfile', id)
+}
+
 const audit: AuditApi = {
   list: (patientId) => ipcRenderer.invoke('audit:list', patientId)
 }
 
-contextBridge.exposeInMainWorld('api', { patients, notes, audit })
+contextBridge.exposeInMainWorld('api', { patients, notes, audit, invoices, settings })
