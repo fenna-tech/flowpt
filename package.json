@@ -1,0 +1,9 @@
+{
+  "name": "flowpt",
+  "private": true,
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev:desktop": "npm run dev -w @flowpt/desktop",
+    "build:desktop": "npm run build -w @flowpt/desktop"
+  }
+}
