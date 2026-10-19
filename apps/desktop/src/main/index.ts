@@ -1,7 +1,9 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { app, dialog, shell, BrowserWindow } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+import { registerIpc } from './ipc'
+import { closeDb, getDb } from './db/connection'
 
 function createWindow(): void {
   // Create the browser window.
@@ -13,7 +15,8 @@ function createWindow(): void {
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false
+      sandbox: true,
+      contextIsolation: true
     }
   })
 
@@ -49,8 +52,14 @@ app.whenReady().then(() => {
     optimizer.watchWindowShortcuts(window)
   })
 
-  // IPC test
-  ipcMain.on('ping', () => console.log('pong'))
+  try {
+    getDb()
+  } catch (err) {
+    dialog.showErrorBox('FlowPT cannot open the patient database', (err as Error).message)
+    app.exit(1)
+    return
+  }
+  registerIpc()
 
   createWindow()
 
@@ -64,6 +73,8 @@ app.whenReady().then(() => {
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
+app.on('will-quit', closeDb)
+
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
