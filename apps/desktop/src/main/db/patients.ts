@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto'
 import type { Patient, PatientInput } from '@flowpt/shared'
 import { getDb } from './connection'
+import { logAudit } from './audit'
 
 interface Row {
   id: string
@@ -75,29 +76,39 @@ export function createPatient(input: PatientInput): Patient {
   const p = clean(input)
   const id = randomUUID()
   const now = new Date().toISOString()
-  getDb()
-    .prepare(
+  const db = getDb()
+  db.transaction(() => {
+    db.prepare(
       `INSERT INTO patients (id, first_name, last_name, dob, phn, email, phone, address, notes, created_at, updated_at)
        VALUES (@id, @firstName, @lastName, @dob, @phn, @email, @phone, @address, @notes, @now, @now)`
-    )
-    .run({ ...p, id, now })
+    ).run({ ...p, id, now })
+    logAudit('patient.create', 'patient', id, id)
+  })()
   return getPatient(id)!
 }
 
 export function updatePatient(id: string, input: PatientInput): Patient {
   const p = clean(input)
-  const res = getDb()
-    .prepare(
+  const before = getPatient(id)
+  if (!before) throw new Error('Patient not found')
+  const changed = (Object.keys(p) as (keyof PatientInput)[]).filter((k) => p[k] !== before[k])
+  const db = getDb()
+  db.transaction(() => {
+    db.prepare(
       `UPDATE patients SET first_name=@firstName, last_name=@lastName, dob=@dob, phn=@phn, email=@email,
        phone=@phone, address=@address, notes=@notes, updated_at=@now WHERE id=@id AND deleted_at IS NULL`
-    )
-    .run({ ...p, id, now: new Date().toISOString() })
-  if (res.changes === 0) throw new Error('Patient not found')
+    ).run({ ...p, id, now: new Date().toISOString() })
+    logAudit('patient.update', 'patient', id, id, changed.join(','))
+  })()
   return getPatient(id)!
 }
 
 // Soft delete keeps the record for audit/sync. A hard-purge policy comes later.
 export function deletePatient(id: string): void {
   const now = new Date().toISOString()
-  getDb().prepare('UPDATE patients SET deleted_at=?, updated_at=? WHERE id=?').run(now, now, id)
+  const db = getDb()
+  db.transaction(() => {
+    db.prepare('UPDATE patients SET deleted_at=?, updated_at=? WHERE id=?').run(now, now, id)
+    logAudit('patient.delete', 'patient', id, id)
+  })()
 }

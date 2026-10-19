@@ -61,12 +61,22 @@ export interface NoteSection {
   text: string
 }
 
+// Added after signing; append-only. The original note can never change.
+export interface Addendum {
+  id: string
+  noteId: string
+  text: string
+  createdAt: string
+}
+
 export interface ChartNote {
   id: string
   patientId: string
   templateId: string
   visitDate: string // YYYY-MM-DD
   sections: NoteSection[]
+  signedAt: string | null // once set, the note is locked
+  addenda: Addendum[]
   createdAt: string
   updatedAt: string
 }
@@ -75,5 +85,23 @@ export interface NoteApi {
   list(patientId: string): Promise<ChartNote[]>
   create(patientId: string, templateId: string, visitDate: string): Promise<ChartNote>
   update(id: string, visitDate: string, sections: NoteSection[]): Promise<ChartNote>
-  remove(id: string): Promise<void>
+  sign(id: string): Promise<ChartNote>
+  addAddendum(id: string, text: string): Promise<ChartNote>
+  remove(id: string): Promise<void> // unsigned drafts only
+}
+
+// ---- Audit log (append-only; never contains clinical content) ----
+
+export interface AuditEntry {
+  id: number
+  ts: string
+  action: string // e.g. 'note.sign', 'patient.update'
+  entity: string
+  entityId: string
+  patientId: string | null
+  detail: string // metadata only, e.g. changed field names
+}
+
+export interface AuditApi {
+  list(patientId: string): Promise<AuditEntry[]>
 }

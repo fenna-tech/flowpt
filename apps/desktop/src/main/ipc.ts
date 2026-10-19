@@ -6,7 +6,8 @@ import {
   listPatients,
   updatePatient
 } from './db/patients'
-import { createNote, deleteNote, listNotes, updateNote } from './db/notes'
+import { addAddendum, createNote, deleteNote, listNotes, signNote, updateNote } from './db/notes'
+import { listAudit } from './db/audit'
 
 export function registerIpc(): void {
   ipcMain.handle('patients:list', (_e, search?: string) => listPatients(search))
@@ -22,5 +23,9 @@ export function registerIpc(): void {
   ipcMain.handle('notes:update', (_e, id: string, visitDate: string, sections) =>
     updateNote(id, visitDate, sections)
   )
+  ipcMain.handle('notes:sign', (_e, id: string) => signNote(id))
+  ipcMain.handle('notes:addAddendum', (_e, id: string, text: string) => addAddendum(id, text))
   ipcMain.handle('notes:remove', (_e, id: string) => deleteNote(id))
+
+  ipcMain.handle('audit:list', (_e, patientId: string) => listAudit(patientId))
 }

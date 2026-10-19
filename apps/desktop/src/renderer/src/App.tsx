@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { Patient, PatientInput } from '@flowpt/shared'
 import { NotesPanel } from './NotesPanel'
+import { AuditPanel } from './AuditPanel'
 
 const empty: PatientInput = {
   firstName: '',
@@ -31,7 +32,7 @@ function App(): React.JSX.Element {
   const [selectedId, setSelectedId] = useState<string | 'new' | null>(null)
   const [form, setForm] = useState<PatientInput>(empty)
   const [error, setError] = useState('')
-  const [tab, setTab] = useState<'details' | 'notes'>('details')
+  const [tab, setTab] = useState<'details' | 'notes' | 'audit'>('details')
 
   const refresh = useCallback(() => window.api.patients.list(search).then(setPatients), [search])
   useEffect(() => {
@@ -120,7 +121,7 @@ function App(): React.JSX.Element {
           <>
             {selectedId !== 'new' && (
               <div className="mb-4 flex gap-1 border-b border-slate-200">
-                {(['details', 'notes'] as const).map((t) => (
+                {(['details', 'notes', 'audit'] as const).map((t) => (
                   <button
                     key={t}
                     onClick={() => setTab(t)}
@@ -130,13 +131,15 @@ function App(): React.JSX.Element {
                         : 'text-slate-500 hover:text-slate-800'
                     }`}
                   >
-                    {t === 'notes' ? 'Chart notes' : 'Details'}
+                    {t === 'notes' ? 'Chart notes' : t === 'audit' ? 'Audit log' : 'Details'}
                   </button>
                 ))}
               </div>
             )}
             {selectedId !== 'new' && tab === 'notes' ? (
               <NotesPanel key={selectedId} patientId={selectedId} />
+            ) : selectedId !== 'new' && tab === 'audit' ? (
+              <AuditPanel key={selectedId} patientId={selectedId} />
             ) : (
               <form onSubmit={save} className="max-w-xl space-y-3">
                 <h2 className="text-xl font-semibold">
