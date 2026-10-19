@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { Patient, PatientInput } from '@flowpt/shared'
+import { NotesPanel } from './NotesPanel'
 
 const empty: PatientInput = {
   firstName: '',
@@ -30,6 +31,7 @@ function App(): React.JSX.Element {
   const [selectedId, setSelectedId] = useState<string | 'new' | null>(null)
   const [form, setForm] = useState<PatientInput>(empty)
   const [error, setError] = useState('')
+  const [tab, setTab] = useState<'details' | 'notes'>('details')
 
   const refresh = useCallback(() => window.api.patients.list(search).then(setPatients), [search])
   useEffect(() => {
@@ -38,6 +40,7 @@ function App(): React.JSX.Element {
 
   const select = (p: Patient | null): void => {
     setError('')
+    setTab('details')
     if (p) {
       const { firstName, lastName, dob, phn, email, phone, address, notes } = p
       setForm({ firstName, lastName, dob, phn, email, phone, address, notes })
@@ -114,46 +117,69 @@ function App(): React.JSX.Element {
         {selectedId === null ? (
           <p className="text-slate-500">Select a patient or create a new one.</p>
         ) : (
-          <form onSubmit={save} className="max-w-xl space-y-3">
-            <h2 className="text-xl font-semibold">
-              {selectedId === 'new' ? 'New patient' : 'Edit patient'}
-            </h2>
-            {fields.map((f) => (
-              <label key={f.key} className="block text-sm">
-                <span className="mb-1 block text-slate-600">{f.label}</span>
-                <input
-                  className={inputCls}
-                  type={f.type ?? 'text'}
-                  value={form[f.key]}
-                  onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
-                />
-              </label>
-            ))}
-            <label className="block text-sm">
-              <span className="mb-1 block text-slate-600">Notes</span>
-              <textarea
-                className={inputCls}
-                rows={5}
-                value={form.notes}
-                onChange={(e) => setForm({ ...form, notes: e.target.value })}
-              />
-            </label>
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            <div className="flex gap-2">
-              <button className="rounded bg-blue-600 px-4 py-1.5 text-sm text-white hover:bg-blue-700">
-                Save
-              </button>
-              {selectedId !== 'new' && (
-                <button
-                  type="button"
-                  onClick={remove}
-                  className="rounded border border-red-300 px-4 py-1.5 text-sm text-red-600 hover:bg-red-50"
-                >
-                  Delete
-                </button>
-              )}
-            </div>
-          </form>
+          <>
+            {selectedId !== 'new' && (
+              <div className="mb-4 flex gap-1 border-b border-slate-200">
+                {(['details', 'notes'] as const).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setTab(t)}
+                    className={`px-4 py-2 text-sm capitalize ${
+                      tab === t
+                        ? 'border-b-2 border-blue-600 font-medium text-blue-700'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    {t === 'notes' ? 'Chart notes' : 'Details'}
+                  </button>
+                ))}
+              </div>
+            )}
+            {selectedId !== 'new' && tab === 'notes' ? (
+              <NotesPanel key={selectedId} patientId={selectedId} />
+            ) : (
+              <form onSubmit={save} className="max-w-xl space-y-3">
+                <h2 className="text-xl font-semibold">
+                  {selectedId === 'new' ? 'New patient' : 'Edit patient'}
+                </h2>
+                {fields.map((f) => (
+                  <label key={f.key} className="block text-sm">
+                    <span className="mb-1 block text-slate-600">{f.label}</span>
+                    <input
+                      className={inputCls}
+                      type={f.type ?? 'text'}
+                      value={form[f.key]}
+                      onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
+                    />
+                  </label>
+                ))}
+                <label className="block text-sm">
+                  <span className="mb-1 block text-slate-600">General notes (not clinical)</span>
+                  <textarea
+                    className={inputCls}
+                    rows={5}
+                    value={form.notes}
+                    onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                  />
+                </label>
+                {error && <p className="text-sm text-red-600">{error}</p>}
+                <div className="flex gap-2">
+                  <button className="rounded bg-blue-600 px-4 py-1.5 text-sm text-white hover:bg-blue-700">
+                    Save
+                  </button>
+                  {selectedId !== 'new' && (
+                    <button
+                      type="button"
+                      onClick={remove}
+                      className="rounded border border-red-300 px-4 py-1.5 text-sm text-red-600 hover:bg-red-50"
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
+              </form>
+            )}
+          </>
         )}
       </main>
     </div>

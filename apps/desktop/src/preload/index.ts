@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { PatientApi } from '@flowpt/shared'
+import type { NoteApi, PatientApi } from '@flowpt/shared'
 
 const patients: PatientApi = {
   list: (search) => ipcRenderer.invoke('patients:list', search),
@@ -9,4 +9,12 @@ const patients: PatientApi = {
   remove: (id) => ipcRenderer.invoke('patients:remove', id)
 }
 
-contextBridge.exposeInMainWorld('api', { patients })
+const notes: NoteApi = {
+  list: (patientId) => ipcRenderer.invoke('notes:list', patientId),
+  create: (patientId, templateId, visitDate) =>
+    ipcRenderer.invoke('notes:create', patientId, templateId, visitDate),
+  update: (id, visitDate, sections) => ipcRenderer.invoke('notes:update', id, visitDate, sections),
+  remove: (id) => ipcRenderer.invoke('notes:remove', id)
+}
+
+contextBridge.exposeInMainWorld('api', { patients, notes })

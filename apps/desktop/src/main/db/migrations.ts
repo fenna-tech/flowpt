@@ -16,7 +16,18 @@ const MIGRATIONS: string[] = [
     updated_at TEXT NOT NULL,
     deleted_at TEXT
   );
-  CREATE INDEX idx_patients_name ON patients(last_name, first_name);`
+  CREATE INDEX idx_patients_name ON patients(last_name, first_name);`,
+  `CREATE TABLE chart_notes (
+    id TEXT PRIMARY KEY,
+    patient_id TEXT NOT NULL REFERENCES patients(id),
+    template_id TEXT NOT NULL,
+    visit_date TEXT NOT NULL,
+    sections TEXT NOT NULL, -- JSON: [{key,label,text}]
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT
+  );
+  CREATE INDEX idx_notes_patient ON chart_notes(patient_id, visit_date);`
 ]
 
 export function migrate(db: Database.Database): void {
