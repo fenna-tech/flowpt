@@ -1,0 +1,23 @@
+# Local development config for the Supabase CLI (`supabase start`). The hosted project is configured
+# in the Supabase dashboard; mirror these auth settings there (see supabase/README.md).
+project_id = "flowpt"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+
+[db]
+port = 54322
+major_version = 17
+
+[auth]
+enabled = true
+site_url = "http://localhost"
+enable_signup = true
+minimum_password_length = 12
+password_requirements = "lower_upper_letters_digits_symbols"
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true

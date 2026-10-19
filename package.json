@@ -1,9 +1,16 @@
 {
   "name": "flowpt",
   "private": true,
-  "workspaces": ["apps/*", "packages/*"],
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "dev:desktop": "npm run dev -w @flowpt/desktop",
-    "build:desktop": "npm run build -w @flowpt/desktop"
+    "build:desktop": "npm run build -w @flowpt/desktop",
+    "test:supabase": "node supabase/tests/schema.test.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.10"
   }
 }
