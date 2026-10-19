@@ -1,4 +1,11 @@
-import type { AuditApi, InvoiceApi, NoteApi, PatientApi, SettingsApi } from '@flowpt/shared'
+import type {
+  AuditApi,
+  InvoiceApi,
+  LockApi,
+  NoteApi,
+  PatientApi,
+  SettingsApi
+} from '@flowpt/shared'
 
 declare global {
   interface Window {
@@ -8,6 +15,7 @@ declare global {
       audit: AuditApi
       invoices: InvoiceApi
       settings: SettingsApi
+      lock: LockApi
     }
   }
 }

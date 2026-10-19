@@ -40,6 +40,9 @@ export function getPractitioner(): PractitionerProfile {
   return raw ? { ...EMPTY_PRACTITIONER, ...JSON.parse(raw) } : { ...EMPTY_PRACTITIONER }
 }
 
+// Solo practitioner: the practitioner profile name is the acting identity.
+export const currentActor = (): string => getPractitioner().name || 'Unknown'
+
 export function savePractitioner(p: PractitionerProfile): PractitionerProfile {
   const clean: PractitionerProfile = {
     name: str(p?.name, 100),

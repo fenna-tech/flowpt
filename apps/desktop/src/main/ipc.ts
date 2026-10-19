@@ -25,43 +25,78 @@ import {
   savePractitioner
 } from './db/settings'
 import { exportInvoicePdf } from './pdf'
+import {
+  changePin,
+  getTimeout,
+  isUnlocked,
+  lockNow,
+  setTimeoutMinutes,
+  setup,
+  status,
+  touch,
+  unlock
+} from './lock'
+
+// Every data channel goes through `guarded`: while the app is locked, nothing is readable or writable.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Handler = (...args: any[]) => unknown
+
+function guarded(channel: string, fn: Handler): void {
+  ipcMain.handle(channel, (_e, ...args) => {
+    if (!isUnlocked()) throw new Error('App is locked')
+    touch()
+    return fn(...args)
+  })
+}
 
 export function registerIpc(): void {
-  ipcMain.handle('patients:list', (_e, search?: string) => listPatients(search))
-  ipcMain.handle('patients:get', (_e, id: string) => getPatient(id))
-  ipcMain.handle('patients:create', (_e, input) => createPatient(input))
-  ipcMain.handle('patients:update', (_e, id: string, input) => updatePatient(id, input))
-  ipcMain.handle('patients:remove', (_e, id: string) => deletePatient(id))
+  guarded('patients:list', (search?: string) => listPatients(search))
+  guarded('patients:get', (id: string) => getPatient(id))
+  guarded('patients:create', (input) => createPatient(input))
+  guarded('patients:update', (id: string, input) => updatePatient(id, input))
+  guarded('patients:remove', (id: string) => deletePatient(id))
 
-  ipcMain.handle('notes:list', (_e, patientId: string) => listNotes(patientId))
-  ipcMain.handle('notes:create', (_e, patientId: string, templateId: string, visitDate: string) =>
+  guarded('notes:list', (patientId: string) => listNotes(patientId))
+  guarded('notes:create', (patientId: string, templateId: string, visitDate: string) =>
     createNote(patientId, templateId, visitDate)
   )
-  ipcMain.handle('notes:update', (_e, id: string, visitDate: string, sections) =>
+  guarded('notes:update', (id: string, visitDate: string, sections) =>
     updateNote(id, visitDate, sections)
   )
-  ipcMain.handle('notes:sign', (_e, id: string) => signNote(id))
-  ipcMain.handle('notes:addAddendum', (_e, id: string, text: string) => addAddendum(id, text))
-  ipcMain.handle('notes:remove', (_e, id: string) => deleteNote(id))
+  guarded('notes:sign', (id: string) => signNote(id))
+  guarded('notes:addAddendum', (id: string, text: string) => addAddendum(id, text))
+  guarded('notes:remove', (id: string) => deleteNote(id))
 
-  ipcMain.handle('invoices:list', (_e, patientId: string) => listInvoices(patientId))
-  ipcMain.handle('invoices:create', (_e, patientId: string, profileId: string) =>
+  guarded('invoices:list', (patientId: string) => listInvoices(patientId))
+  guarded('invoices:create', (patientId: string, profileId: string) =>
     createInvoice(patientId, profileId)
   )
-  ipcMain.handle('invoices:update', (_e, id: string, input) => updateInvoice(id, input))
-  ipcMain.handle('invoices:issue', (_e, id: string) => issueInvoice(id))
-  ipcMain.handle('invoices:markPaid', (_e, id: string, method: string, paidDate: string) =>
+  guarded('invoices:update', (id: string, input) => updateInvoice(id, input))
+  guarded('invoices:issue', (id: string) => issueInvoice(id))
+  guarded('invoices:markPaid', (id: string, method: string, paidDate: string) =>
     markPaid(id, method, paidDate)
   )
-  ipcMain.handle('invoices:void', (_e, id: string) => voidInvoice(id))
-  ipcMain.handle('invoices:remove', (_e, id: string) => deleteInvoice(id))
-  ipcMain.handle('invoices:exportPdf', (_e, id: string) => exportInvoicePdf(id))
+  guarded('invoices:void', (id: string) => voidInvoice(id))
+  guarded('invoices:remove', (id: string) => deleteInvoice(id))
+  guarded('invoices:exportPdf', (id: string) => exportInvoicePdf(id))
 
-  ipcMain.handle('settings:getPractitioner', () => getPractitioner())
-  ipcMain.handle('settings:savePractitioner', (_e, p) => savePractitioner(p))
-  ipcMain.handle('settings:listProfiles', () => listProfiles())
-  ipcMain.handle('settings:saveProfile', (_e, p) => saveProfile(p))
-  ipcMain.handle('settings:removeProfile', (_e, id: string) => removeProfile(id))
+  guarded('settings:getPractitioner', () => getPractitioner())
+  guarded('settings:savePractitioner', (p) => savePractitioner(p))
+  guarded('settings:listProfiles', () => listProfiles())
+  guarded('settings:saveProfile', (p) => saveProfile(p))
+  guarded('settings:removeProfile', (id: string) => removeProfile(id))
 
-  ipcMain.handle('audit:list', (_e, patientId: string) => listAudit(patientId))
+  guarded('audit:list', (patientId: string) => listAudit(patientId))
+
+  // Lock channels. Only status/setup/unlock work while locked.
+  ipcMain.handle('lock:status', () => status())
+  ipcMain.handle('lock:setup', (_e, name: string, pin: string) => setup(name, pin))
+  ipcMain.handle('lock:unlock', (_e, pin: string) => unlock(pin))
+  guarded('lock:lock', () => lockNow('manual'))
+  guarded('lock:getTimeout', () => getTimeout())
+  guarded('lock:setTimeout', (minutes: number) => setTimeoutMinutes(minutes))
+  guarded('lock:changePin', (oldPin: string, newPin: string) => changePin(oldPin, newPin))
+  ipcMain.on('lock:activity', () => {
+    if (isUnlocked()) touch()
+  })
 }

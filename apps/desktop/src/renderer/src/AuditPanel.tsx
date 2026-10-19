@@ -16,6 +16,7 @@ export function AuditPanel({ patientId }: { patientId: string }): React.JSX.Elem
         <thead className="text-xs text-slate-500">
           <tr>
             <th className="py-1 pr-3">When</th>
+            <th className="py-1 pr-3">Who</th>
             <th className="py-1 pr-3">Action</th>
             <th className="py-1">Detail</th>
           </tr>
@@ -24,6 +25,7 @@ export function AuditPanel({ patientId }: { patientId: string }): React.JSX.Elem
           {entries.map((e) => (
             <tr key={e.id} className="border-t border-slate-200">
               <td className="py-1 pr-3 whitespace-nowrap">{new Date(e.ts).toLocaleString()}</td>
+              <td className="py-1 pr-3">{e.actor}</td>
               <td className="py-1 pr-3 font-mono text-xs">{e.action}</td>
               <td className="py-1 text-slate-600">{e.detail}</td>
             </tr>

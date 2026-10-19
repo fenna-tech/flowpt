@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { BillingProfile, BillingProfileInput, PractitionerProfile } from '@flowpt/shared'
+import {
+  LOCK_TIMEOUT_OPTIONS,
+  type BillingProfile,
+  type BillingProfileInput,
+  type PractitionerProfile
+} from '@flowpt/shared'
 
 const inputCls = 'w-full rounded border border-slate-300 px-2 py-1.5 text-sm'
 const msg = (err: unknown): string =>
@@ -209,9 +214,79 @@ function ProfilesManager(): React.JSX.Element {
   )
 }
 
+function SecuritySettings(): React.JSX.Element {
+  const [timeout, setTimeoutMin] = useState<number | null>(null)
+  const [oldPin, setOldPin] = useState('')
+  const [newPin, setNewPin] = useState('')
+  const [status, setStatus] = useState('')
+  useEffect(() => {
+    window.api.lock.getTimeout().then(setTimeoutMin)
+  }, [])
+
+  const changeTimeout = async (minutes: number): Promise<void> => {
+    await window.api.lock.setTimeout(minutes)
+    setTimeoutMin(minutes)
+  }
+
+  const changePin = async (e: React.FormEvent): Promise<void> => {
+    e.preventDefault()
+    try {
+      await window.api.lock.changePin(oldPin, newPin)
+      setOldPin('')
+      setNewPin('')
+      setStatus('PIN changed')
+    } catch (err) {
+      setStatus(msg(err))
+    }
+  }
+
+  return (
+    <div className="max-w-xl space-y-3">
+      <h2 className="text-xl font-semibold">Security</h2>
+      <label className="block text-sm">
+        <span className="mb-1 block text-slate-600">Auto-lock after inactivity</span>
+        <select
+          className={inputCls}
+          value={timeout ?? ''}
+          onChange={(e) => changeTimeout(Number(e.target.value))}
+        >
+          {LOCK_TIMEOUT_OPTIONS.map((m) => (
+            <option key={m} value={m}>
+              {m} minute{m === 1 ? '' : 's'}
+            </option>
+          ))}
+        </select>
+      </label>
+      <form onSubmit={changePin} className="space-y-2">
+        <input
+          className={inputCls}
+          type="password"
+          placeholder="Current PIN"
+          value={oldPin}
+          onChange={(e) => setOldPin(e.target.value)}
+        />
+        <input
+          className={inputCls}
+          type="password"
+          placeholder="New PIN (6+ characters)"
+          value={newPin}
+          onChange={(e) => setNewPin(e.target.value)}
+        />
+        <div className="flex items-center gap-3">
+          <button className="rounded bg-blue-600 px-4 py-1.5 text-sm text-white hover:bg-blue-700">
+            Change PIN
+          </button>
+          <span className="text-sm text-slate-500">{status}</span>
+        </div>
+      </form>
+    </div>
+  )
+}
+
 export function SettingsPanel(): React.JSX.Element {
   return (
     <div className="space-y-10">
+      <SecuritySettings />
       <PractitionerForm />
       <ProfilesManager />
     </div>

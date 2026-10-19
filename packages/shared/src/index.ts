@@ -66,6 +66,7 @@ export interface Addendum {
   id: string
   noteId: string
   text: string
+  author: string
   createdAt: string
 }
 
@@ -76,6 +77,7 @@ export interface ChartNote {
   visitDate: string // YYYY-MM-DD
   sections: NoteSection[]
   signedAt: string | null // once set, the note is locked
+  signedBy: string | null
   addenda: Addendum[]
   createdAt: string
   updatedAt: string
@@ -99,6 +101,7 @@ export interface AuditEntry {
   entity: string
   entityId: string
   patientId: string | null
+  actor: string // practitioner identity at the time
   detail: string // metadata only, e.g. changed field names
 }
 
@@ -216,4 +219,21 @@ export interface SettingsApi {
   listProfiles(): Promise<BillingProfile[]>
   saveProfile(p: BillingProfileInput): Promise<BillingProfile>
   removeProfile(id: string): Promise<void>
+}
+
+// ---- App lock ----
+
+export type LockStatus = 'setup' | 'locked' | 'unlocked'
+export const LOCK_TIMEOUT_OPTIONS = [1, 5, 10, 15, 30, 60] as const // minutes
+
+export interface LockApi {
+  status(): Promise<LockStatus>
+  setup(name: string, pin: string): Promise<void> // first run: creates identity + PIN
+  unlock(pin: string): Promise<{ ok: boolean; retryAfterSec?: number }>
+  lock(): Promise<void>
+  activity(): void // renderer reports user activity to defer auto-lock
+  getTimeout(): Promise<number>
+  setTimeout(minutes: number): Promise<void>
+  changePin(oldPin: string, newPin: string): Promise<void>
+  onChange(cb: (status: LockStatus) => void): () => void
 }

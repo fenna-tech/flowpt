@@ -71,6 +71,7 @@ function NoteEditor({
         {locked ? (
           <span className="ml-auto rounded bg-green-100 px-2 py-0.5 text-xs text-green-800">
             Signed {fmt(note.signedAt!)}
+            {note.signedBy ? ` by ${note.signedBy}` : ''}
           </span>
         ) : (
           <span className="ml-auto rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-800">
@@ -100,7 +101,10 @@ function NoteEditor({
           <h4 className="text-sm font-medium text-slate-700">Addenda</h4>
           {note.addenda.map((a) => (
             <div key={a.id} className="rounded bg-slate-50 p-2 text-sm">
-              <div className="mb-1 text-xs text-slate-500">{fmt(a.createdAt)}</div>
+              <div className="mb-1 text-xs text-slate-500">
+                {fmt(a.createdAt)}
+                {a.author ? ` · ${a.author}` : ''}
+              </div>
               <div className="whitespace-pre-wrap">{a.text}</div>
             </div>
           ))}

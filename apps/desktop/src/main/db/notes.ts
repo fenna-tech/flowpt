@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto'
 import { BUILTIN_TEMPLATES, type Addendum, type ChartNote, type NoteSection } from '@flowpt/shared'
 import { getDb } from './connection'
 import { logAudit } from './audit'
+import { currentActor } from './settings'
 
 interface Row {
   id: string
@@ -10,6 +11,7 @@ interface Row {
   visit_date: string
   sections: string
   signed_at: string | null
+  signed_by: string | null
   created_at: string
   updated_at: string
 }
@@ -18,6 +20,7 @@ interface AddendumRow {
   id: string
   note_id: string
   text: string
+  author: string
   created_at: string
 }
 
@@ -28,6 +31,7 @@ const toNote = (r: Row, addenda: Addendum[]): ChartNote => ({
   visitDate: r.visit_date,
   sections: JSON.parse(r.sections) as NoteSection[],
   signedAt: r.signed_at,
+  signedBy: r.signed_by,
   addenda,
   createdAt: r.created_at,
   updatedAt: r.updated_at
@@ -55,7 +59,13 @@ function addendaFor(noteId: string): Addendum[] {
     getDb()
       .prepare('SELECT * FROM note_addenda WHERE note_id = ? ORDER BY created_at, rowid')
       .all(noteId) as AddendumRow[]
-  ).map((a) => ({ id: a.id, noteId: a.note_id, text: a.text, createdAt: a.created_at }))
+  ).map((a) => ({
+    id: a.id,
+    noteId: a.note_id,
+    text: a.text,
+    author: a.author,
+    createdAt: a.created_at
+  }))
 }
 
 function getRow(id: string): Row {
@@ -128,11 +138,9 @@ export function signNote(id: string): ChartNote {
   const now = new Date().toISOString()
   const db = getDb()
   db.transaction(() => {
-    db.prepare('UPDATE chart_notes SET signed_at = ?, updated_at = ? WHERE id = ?').run(
-      now,
-      now,
-      id
-    )
+    db.prepare(
+      'UPDATE chart_notes SET signed_at = ?, signed_by = ?, updated_at = ? WHERE id = ?'
+    ).run(now, currentActor(), now, id)
     logAudit('note.sign', 'note', id, row.patient_id)
   })()
   return getNote(id)
@@ -146,12 +154,9 @@ export function addAddendum(id: string, text: string): ChartNote {
   const addendumId = randomUUID()
   const db = getDb()
   db.transaction(() => {
-    db.prepare('INSERT INTO note_addenda (id, note_id, text, created_at) VALUES (?, ?, ?, ?)').run(
-      addendumId,
-      id,
-      body,
-      new Date().toISOString()
-    )
+    db.prepare(
+      'INSERT INTO note_addenda (id, note_id, text, author, created_at) VALUES (?, ?, ?, ?, ?)'
+    ).run(addendumId, id, body, currentActor(), new Date().toISOString())
     logAudit('note.addendum', 'note', id, row.patient_id, addendumId)
   })()
   return getNote(id)

@@ -1,5 +1,13 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { AuditApi, InvoiceApi, NoteApi, PatientApi, SettingsApi } from '@flowpt/shared'
+import type {
+  AuditApi,
+  InvoiceApi,
+  LockApi,
+  LockStatus,
+  NoteApi,
+  PatientApi,
+  SettingsApi
+} from '@flowpt/shared'
 
 const patients: PatientApi = {
   list: (search) => ipcRenderer.invoke('patients:list', search),
@@ -38,8 +46,24 @@ const settings: SettingsApi = {
   removeProfile: (id) => ipcRenderer.invoke('settings:removeProfile', id)
 }
 
+const lock: LockApi = {
+  status: () => ipcRenderer.invoke('lock:status'),
+  setup: (name, pin) => ipcRenderer.invoke('lock:setup', name, pin),
+  unlock: (pin) => ipcRenderer.invoke('lock:unlock', pin),
+  lock: () => ipcRenderer.invoke('lock:lock'),
+  activity: () => ipcRenderer.send('lock:activity'),
+  getTimeout: () => ipcRenderer.invoke('lock:getTimeout'),
+  setTimeout: (minutes) => ipcRenderer.invoke('lock:setTimeout', minutes),
+  changePin: (oldPin, newPin) => ipcRenderer.invoke('lock:changePin', oldPin, newPin),
+  onChange: (cb) => {
+    const handler = (_e: unknown, s: LockStatus): void => cb(s)
+    ipcRenderer.on('lock:changed', handler)
+    return () => ipcRenderer.removeListener('lock:changed', handler)
+  }
+}
+
 const audit: AuditApi = {
   list: (patientId) => ipcRenderer.invoke('audit:list', patientId)
 }
 
-contextBridge.exposeInMainWorld('api', { patients, notes, audit, invoices, settings })
+contextBridge.exposeInMainWorld('api', { patients, notes, audit, invoices, settings, lock })

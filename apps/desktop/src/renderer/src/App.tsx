@@ -4,6 +4,8 @@ import { NotesPanel } from './NotesPanel'
 import { AuditPanel } from './AuditPanel'
 import { InvoicesPanel } from './InvoicesPanel'
 import { SettingsPanel } from './SettingsPanel'
+import { LockScreen } from './LockScreen'
+import { useActivityPings, useLockStatus } from './lockHooks'
 
 const empty: PatientInput = {
   firstName: '',
@@ -28,7 +30,7 @@ const fields: { key: keyof PatientInput; label: string; type?: string }[] = [
 
 const inputCls = 'w-full rounded border border-slate-300 px-2 py-1.5 text-sm'
 
-function App(): React.JSX.Element {
+function Workspace(): React.JSX.Element {
   const [patients, setPatients] = useState<Patient[]>([])
   const [search, setSearch] = useState('')
   const [selectedId, setSelectedId] = useState<string | 'new' | null>(null)
@@ -116,6 +118,12 @@ function App(): React.JSX.Element {
             <li className="px-3 py-4 text-sm text-slate-500">No patients yet.</li>
           )}
         </ul>
+        <button
+          onClick={() => window.api.lock.lock()}
+          className="border-t border-slate-200 px-3 py-2 text-left text-sm text-slate-600 hover:bg-slate-100"
+        >
+          Lock now
+        </button>
         <button
           onClick={() => setView('settings')}
           className="border-t border-slate-200 px-3 py-2 text-left text-sm text-slate-600 hover:bg-slate-100"
@@ -208,6 +216,15 @@ function App(): React.JSX.Element {
       </main>
     </div>
   )
+}
+
+// The workspace is unmounted while locked, so no patient data lingers in renderer state.
+function App(): React.JSX.Element {
+  const status = useLockStatus()
+  useActivityPings(status === 'unlocked')
+  if (status === null) return <div />
+  if (status !== 'unlocked') return <LockScreen status={status} />
+  return <Workspace />
 }
 
 export default App

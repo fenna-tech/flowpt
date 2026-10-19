@@ -4,6 +4,7 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { registerIpc } from './ipc'
 import { closeDb, getDb } from './db/connection'
+import { startLockWatchers } from './lock'
 
 function createWindow(): void {
   // Create the browser window.
@@ -60,6 +61,7 @@ app.whenReady().then(() => {
     return
   }
   registerIpc()
+  startLockWatchers()
 
   createWindow()
 

@@ -112,7 +112,20 @@ const MIGRATIONS: string[] = [
   BEGIN SELECT RAISE(ABORT, 'Void invoices are final'); END;
 
   CREATE TRIGGER invoices_no_hard_delete BEFORE DELETE ON invoices
-  BEGIN SELECT RAISE(ABORT, 'Invoices cannot be hard-deleted'); END;`
+  BEGIN SELECT RAISE(ABORT, 'Invoices cannot be hard-deleted'); END;`,
+  // Identity: who signed, who wrote each addendum, who performed each audited action.
+  `ALTER TABLE chart_notes ADD COLUMN signed_by TEXT;
+  ALTER TABLE note_addenda ADD COLUMN author TEXT NOT NULL DEFAULT '';
+  ALTER TABLE audit_log ADD COLUMN actor TEXT NOT NULL DEFAULT '';
+
+  DROP TRIGGER chart_notes_locked;
+  CREATE TRIGGER chart_notes_locked BEFORE UPDATE ON chart_notes
+  WHEN OLD.signed_at IS NOT NULL AND (
+    NEW.sections IS NOT OLD.sections OR NEW.visit_date IS NOT OLD.visit_date OR
+    NEW.template_id IS NOT OLD.template_id OR NEW.patient_id IS NOT OLD.patient_id OR
+    NEW.signed_at IS NOT OLD.signed_at OR NEW.signed_by IS NOT OLD.signed_by OR
+    NEW.deleted_at IS NOT OLD.deleted_at)
+  BEGIN SELECT RAISE(ABORT, 'Signed notes cannot be modified or deleted'); END;`
 ]
 
 export function migrate(db: Database.Database): void {
