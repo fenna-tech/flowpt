@@ -38,12 +38,16 @@ function InvoiceStyle({
   setP: (p: PractitionerProfile) => void
 }): React.JSX.Element {
   const [html, setHtml] = useState('')
+  const [previewError, setPreviewError] = useState('')
   useEffect(() => {
     const t = setTimeout(() => {
       window.api.settings
         .previewInvoice(p)
-        .then((h) => setHtml(h.replace('<style>', '<style>body{padding:28px 32px}')))
-        .catch(() => undefined)
+        .then((h) => {
+          setPreviewError('')
+          setHtml(h.replace('<style>', '<style>body{padding:28px 32px}'))
+        })
+        .catch((err) => setPreviewError(msg(err)))
     }, 250)
     return () => clearTimeout(t)
   }, [p])
@@ -98,6 +102,9 @@ function InvoiceStyle({
         </label>
       </div>
       <div className="h-[490px] overflow-hidden rounded-lg border border-line bg-white">
+        {previewError && (
+          <p className="p-4 text-sm text-red-600">Preview unavailable: {previewError}</p>
+        )}
         <iframe
           title="Invoice preview"
           sandbox=""
