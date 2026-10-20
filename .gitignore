@@ -5,3 +5,5 @@ out
 .eslintcache
 .env*
 !.env.example
+supabase/.temp
+supabase/.branches
