@@ -27,6 +27,8 @@ const empty: PatientInput = {
   email: '',
   phone: '',
   address: '',
+  parentNames: '',
+  diagnosis: '',
   notes: ''
 }
 
@@ -34,10 +36,10 @@ const fields: { key: keyof PatientInput; label: string; type?: string }[] = [
   { key: 'firstName', label: 'First name' },
   { key: 'lastName', label: 'Last name' },
   { key: 'dob', label: 'Date of birth', type: 'date' },
-  { key: 'phn', label: 'BC PHN (10 digits)' },
-  { key: 'email', label: 'Email', type: 'email' },
-  { key: 'phone', label: 'Phone', type: 'tel' },
-  { key: 'address', label: 'Address' }
+  { key: 'parentNames', label: 'Parent / guardian name(s)' },
+  { key: 'phone', label: 'Contact phone', type: 'tel' },
+  { key: 'address', label: 'Address' },
+  { key: 'diagnosis', label: 'Diagnosis' }
 ]
 
 const inputCls = 'input'
@@ -66,8 +68,30 @@ function Workspace({ onSignOut }: { onSignOut: () => void }): React.JSX.Element 
     setTab('details')
     setView('patients')
     if (p) {
-      const { firstName, lastName, dob, phn, email, phone, address, notes } = p
-      setForm({ firstName, lastName, dob, phn, email, phone, address, notes })
+      const {
+        firstName,
+        lastName,
+        dob,
+        phn,
+        email,
+        phone,
+        address,
+        parentNames,
+        diagnosis,
+        notes
+      } = p
+      setForm({
+        firstName,
+        lastName,
+        dob,
+        phn,
+        email,
+        phone,
+        address,
+        parentNames,
+        diagnosis,
+        notes
+      })
       setSelectedId(p.id)
     } else {
       setForm(empty)
@@ -180,7 +204,7 @@ function Workspace({ onSignOut }: { onSignOut: () => void }): React.JSX.Element 
             <SearchIcon className="pointer-events-none absolute top-1/2 left-3.5 size-[18px] -translate-y-1/2 text-slate-500" />
             <input
               className="input-search"
-              placeholder="Search patients by name or PHN…"
+              placeholder="Search patients by name or parent…"
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value)
@@ -219,10 +243,10 @@ function Workspace({ onSignOut }: { onSignOut: () => void }): React.JSX.Element 
                   <thead className="table-head">
                     <tr>
                       <th className="rounded-l-lg px-4 py-3 font-medium">Patient</th>
-                      <th className="px-4 py-3 font-medium">Email</th>
+                      <th className="px-4 py-3 font-medium">Parent / guardian</th>
                       <th className="px-4 py-3 font-medium">Phone</th>
                       <th className="px-4 py-3 font-medium">Date of birth</th>
-                      <th className="rounded-r-lg px-4 py-3 font-medium">BC PHN</th>
+                      <th className="rounded-r-lg px-4 py-3 font-medium">Diagnosis</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -235,10 +259,10 @@ function Workspace({ onSignOut }: { onSignOut: () => void }): React.JSX.Element 
                         <td className="px-4 py-4 font-medium">
                           {p.lastName}, {p.firstName}
                         </td>
-                        <td className="px-4 py-4 text-slate-600">{p.email || '—'}</td>
+                        <td className="px-4 py-4 text-slate-600">{p.parentNames || '—'}</td>
                         <td className="px-4 py-4 text-slate-600">{p.phone || '—'}</td>
                         <td className="px-4 py-4 text-slate-600">{p.dob || '—'}</td>
-                        <td className="px-4 py-4 text-slate-600">{p.phn || '—'}</td>
+                        <td className="px-4 py-4 text-slate-600">{p.diagnosis || '—'}</td>
                       </tr>
                     ))}
                   </tbody>

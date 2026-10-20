@@ -12,6 +12,8 @@ interface Row {
   email: string
   phone: string
   address: string
+  parent_names: string
+  diagnosis: string
   notes: string
   created_at: string
   updated_at: string
@@ -26,6 +28,8 @@ const toPatient = (r: Row): Patient => ({
   email: r.email,
   phone: r.phone,
   address: r.address,
+  parentNames: r.parent_names,
+  diagnosis: r.diagnosis,
   notes: r.notes,
   createdAt: r.created_at,
   updatedAt: r.updated_at
@@ -44,6 +48,8 @@ function clean(input: PatientInput): PatientInput {
     email: str(input?.email, 200),
     phone: str(input?.phone, 50),
     address: str(input?.address, 500),
+    parentNames: str(input?.parentNames, 300),
+    diagnosis: str(input?.diagnosis, 1000),
     notes: str(input?.notes, 10000)
   }
   if (!out.firstName || !out.lastName) throw new Error('First and last name are required')
@@ -58,7 +64,8 @@ export function listPatients(search = ''): Patient[] {
     getDb()
       .prepare(
         `SELECT * FROM patients WHERE deleted_at IS NULL
-         AND (first_name || ' ' || last_name LIKE @q ESCAPE '\\' OR phn LIKE @q ESCAPE '\\')
+         AND (first_name || ' ' || last_name LIKE @q ESCAPE '\\' OR phn LIKE @q ESCAPE '\\'
+              OR parent_names LIKE @q ESCAPE '\\')
          ORDER BY last_name COLLATE NOCASE, first_name COLLATE NOCASE`
       )
       .all({ q }) as Row[]
@@ -79,8 +86,8 @@ export function createPatient(input: PatientInput): Patient {
   const db = getDb()
   db.transaction(() => {
     db.prepare(
-      `INSERT INTO patients (id, first_name, last_name, dob, phn, email, phone, address, notes, created_at, updated_at)
-       VALUES (@id, @firstName, @lastName, @dob, @phn, @email, @phone, @address, @notes, @now, @now)`
+      `INSERT INTO patients (id, first_name, last_name, dob, phn, email, phone, address, parent_names, diagnosis, notes, created_at, updated_at)
+       VALUES (@id, @firstName, @lastName, @dob, @phn, @email, @phone, @address, @parentNames, @diagnosis, @notes, @now, @now)`
     ).run({ ...p, id, now })
     logAudit('patient.create', 'patient', id, id)
   })()
@@ -96,7 +103,7 @@ export function updatePatient(id: string, input: PatientInput): Patient {
   db.transaction(() => {
     db.prepare(
       `UPDATE patients SET first_name=@firstName, last_name=@lastName, dob=@dob, phn=@phn, email=@email,
-       phone=@phone, address=@address, notes=@notes, updated_at=@now WHERE id=@id AND deleted_at IS NULL`
+       phone=@phone, address=@address, parent_names=@parentNames, diagnosis=@diagnosis, notes=@notes, updated_at=@now WHERE id=@id AND deleted_at IS NULL`
     ).run({ ...p, id, now: new Date().toISOString() })
     logAudit('patient.update', 'patient', id, id, changed.join(','))
   })()

@@ -92,12 +92,9 @@ async function computeState(): Promise<{ state: SyncState; email: string | null 
 export async function isSignedIn(): Promise<boolean> {
   if (Date.now() < authOkUntil) return true
   if (!getClient()) return true
-  let ok = false
-  try {
-    ok = (await computeState()).state === 'ready' && Boolean(kvGet(getDb(), 'sync_user'))
-  } catch {
-    ok = false
-  }
+  const ok = await computeState()
+    .then((s) => s.state === 'ready' && Boolean(kvGet(getDb(), 'sync_user')))
+    .catch(() => false)
   authOkUntil = ok ? Date.now() + 5000 : 0
   return ok
 }
