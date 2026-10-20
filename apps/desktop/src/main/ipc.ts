@@ -18,7 +18,7 @@ import {
   voidInvoice
 } from './db/invoices'
 import { getPractitioner, listProfiles, savePractitioner } from './db/settings'
-import { exportInvoicePdf } from './pdf'
+import { exportInvoicePdf, previewInvoiceHtml } from './pdf'
 import { getDashboard } from './dashboard'
 import { exportBackup, restoreFromFile } from './backup'
 import {
@@ -81,6 +81,7 @@ export function registerIpc(): void {
   guarded('invoices:remove', (id: string) => deleteInvoice(id))
   guarded('invoices:exportPdf', (id: string) => exportInvoicePdf(id))
 
+  guarded('settings:previewInvoice', (p) => previewInvoiceHtml(p))
   guarded('settings:getPractitioner', () => getPractitioner())
   guarded('settings:savePractitioner', (p) => savePractitioner(p))
   guarded('settings:listProfiles', () => listProfiles())
