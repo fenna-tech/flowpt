@@ -102,6 +102,8 @@ const SPECS: Spec[] = [
       'email',
       'phone',
       'address',
+      'parent_names',
+      'diagnosis',
       'notes',
       'created_at',
       'updated_at',

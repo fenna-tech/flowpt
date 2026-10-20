@@ -172,7 +172,10 @@ const MIGRATIONS: string[] = [
        NEW.action IS NOT OLD.action OR NEW.entity IS NOT OLD.entity OR
        NEW.entity_id IS NOT OLD.entity_id OR NEW.patient_id IS NOT OLD.patient_id OR
        NEW.actor IS NOT OLD.actor OR NEW.detail IS NOT OLD.detail
-  BEGIN SELECT RAISE(ABORT, 'Audit log is append-only'); END;`
+  BEGIN SELECT RAISE(ABORT, 'Audit log is append-only'); END;`,
+  // Client intake: parent / guardian names and diagnosis.
+  `ALTER TABLE patients ADD COLUMN parent_names TEXT NOT NULL DEFAULT '';
+  ALTER TABLE patients ADD COLUMN diagnosis TEXT NOT NULL DEFAULT '';`
 ]
 
 export function migrate(db: Database.Database): void {

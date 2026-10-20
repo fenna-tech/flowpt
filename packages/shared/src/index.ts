@@ -7,6 +7,8 @@ export interface Patient {
   email: string
   phone: string
   address: string
+  parentNames: string // parent(s) / guardian(s)
+  diagnosis: string
   notes: string
   createdAt: string
   updatedAt: string
