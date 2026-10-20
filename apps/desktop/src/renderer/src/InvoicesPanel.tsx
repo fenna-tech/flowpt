@@ -8,7 +8,7 @@ import {
   type LineItem
 } from '@flowpt/shared'
 
-const inputCls = 'w-full rounded border border-slate-300 px-2 py-1.5 text-sm'
+const inputCls = 'input'
 const today = (): string => new Date().toLocaleDateString('en-CA')
 const msg = (err: unknown): string =>
   (err as Error).message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
@@ -36,10 +36,10 @@ const toItems = (rows: Row[]): LineItem[] =>
   }))
 
 const statusCls: Record<string, string> = {
-  draft: 'bg-amber-100 text-amber-800',
-  issued: 'bg-blue-100 text-blue-800',
-  paid: 'bg-green-100 text-green-800',
-  void: 'bg-red-100 text-red-800'
+  draft: 'pill-pending',
+  issued: 'pill-unpaid',
+  paid: 'pill-paid',
+  void: 'pill-void'
 }
 
 function InvoiceEditor({
@@ -123,10 +123,10 @@ function InvoiceEditor({
   const cell = `${inputCls} disabled:bg-slate-50`
 
   return (
-    <div className="space-y-3 rounded border border-slate-200 bg-white p-4">
+    <div className="space-y-4 card p-5">
       <div className="grid grid-cols-2 gap-3 text-sm">
         <label>
-          <span className="mb-1 block text-slate-600">Billing profile</span>
+          <span className="field-label">Billing profile</span>
           <select
             className={cell}
             disabled={!draft}
@@ -145,7 +145,7 @@ function InvoiceEditor({
           </select>
         </label>
         <label>
-          <span className="mb-1 block text-slate-600">Invoice date</span>
+          <span className="field-label">Invoice date</span>
           <input
             type="date"
             className={cell}
@@ -157,7 +157,7 @@ function InvoiceEditor({
         {profile?.payerLabel && (
           <>
             <label>
-              <span className="mb-1 block text-slate-600">{profile.payerLabel} name</span>
+              <span className="field-label">{profile.payerLabel} name</span>
               <input
                 className={cell}
                 disabled={!draft}
@@ -166,7 +166,7 @@ function InvoiceEditor({
               />
             </label>
             <label>
-              <span className="mb-1 block text-slate-600">
+              <span className="field-label">
                 Policy / claim #{profile.requirePolicyNumber ? '' : ' (optional)'}
               </span>
               <input
@@ -181,7 +181,7 @@ function InvoiceEditor({
       </div>
 
       <table className="w-full text-sm">
-        <thead className="text-left text-xs text-slate-500">
+        <thead className="text-left text-xs font-medium text-slate-500">
           <tr>
             <th className="pr-2">Description</th>
             <th className="w-24 pr-2">Code{profile?.requireServiceCode ? ' *' : ''}</th>
@@ -253,7 +253,7 @@ function InvoiceEditor({
           onClick={() =>
             setRows([...rows, { description: '', code: '', quantity: '1', price: '' }])
           }
-          className="text-sm text-blue-600 hover:underline"
+          className="text-sm link"
         >
           + Add line
         </button>
@@ -268,7 +268,7 @@ function InvoiceEditor({
           <span>
             Tax{' '}
             <input
-              className="w-14 rounded border border-slate-300 px-1 py-0.5 text-right disabled:bg-slate-50"
+              className="input w-16! px-1.5! py-0.5! text-right"
               disabled={!draft}
               inputMode="decimal"
               value={draft ? taxPct : String(invoice.taxPct)}
@@ -278,14 +278,14 @@ function InvoiceEditor({
           </span>
           <span>{formatMoney(totals.taxCents)}</span>
         </div>
-        <div className="flex justify-between border-t border-slate-300 pt-1 font-semibold">
+        <div className="flex justify-between border-t border-line pt-2 font-semibold">
           <span>Total</span>
           <span>{formatMoney(totals.totalCents)}</span>
         </div>
       </div>
 
       <label className="block text-sm">
-        <span className="mb-1 block text-slate-600">Notes (printed on invoice)</span>
+        <span className="field-label">Notes (printed on invoice)</span>
         <textarea
           className={cell}
           rows={2}
@@ -300,37 +300,25 @@ function InvoiceEditor({
       <div className="flex flex-wrap items-center gap-2">
         {draft ? (
           <>
-            <button
-              onClick={save}
-              className="rounded bg-blue-600 px-4 py-1.5 text-sm text-white hover:bg-blue-700"
-            >
+            <button onClick={save} className="btn-primary">
               Save draft
             </button>
-            <button
-              onClick={issue}
-              className="rounded bg-green-700 px-4 py-1.5 text-sm text-white hover:bg-green-800"
-            >
+            <button onClick={issue} className="btn-accent">
               Issue
             </button>
-            <button
-              onClick={remove}
-              className="rounded border border-red-300 px-4 py-1.5 text-sm text-red-600 hover:bg-red-50"
-            >
+            <button onClick={remove} className="btn-danger">
               Delete draft
             </button>
           </>
         ) : (
           <>
-            <button
-              onClick={exportPdf}
-              className="rounded bg-blue-600 px-4 py-1.5 text-sm text-white hover:bg-blue-700"
-            >
+            <button onClick={exportPdf} className="btn-primary">
               Export PDF
             </button>
             {invoice.status === 'issued' && (
               <>
                 <select
-                  className="rounded border border-slate-300 px-2 py-1.5 text-sm"
+                  className="input w-auto!"
                   value={method}
                   onChange={(e) => setMethod(e.target.value)}
                 >
@@ -340,19 +328,13 @@ function InvoiceEditor({
                     </option>
                   ))}
                 </select>
-                <button
-                  onClick={pay}
-                  className="rounded bg-green-700 px-4 py-1.5 text-sm text-white hover:bg-green-800"
-                >
+                <button onClick={pay} className="btn-accent">
                   Mark paid
                 </button>
               </>
             )}
             {invoice.status !== 'void' && (
-              <button
-                onClick={voidIt}
-                className="rounded border border-red-300 px-4 py-1.5 text-sm text-red-600 hover:bg-red-50"
-              >
+              <button onClick={voidIt} className="btn-danger">
                 Void
               </button>
             )}
@@ -399,7 +381,7 @@ export function InvoicesPanel({ patientId }: { patientId: string }): React.JSX.E
     <div className="max-w-3xl space-y-3">
       <div className="flex items-center gap-2">
         <select
-          className="rounded border border-slate-300 px-2 py-1.5 text-sm"
+          className="input w-auto!"
           value={profileId}
           onChange={(e) => setProfileId(e.target.value)}
         >
@@ -409,10 +391,7 @@ export function InvoicesPanel({ patientId }: { patientId: string }): React.JSX.E
             </option>
           ))}
         </select>
-        <button
-          onClick={add}
-          className="rounded bg-blue-600 px-4 py-1.5 text-sm text-white hover:bg-blue-700"
-        >
+        <button onClick={add} className="btn-primary">
           + New invoice
         </button>
       </div>
@@ -422,13 +401,11 @@ export function InvoicesPanel({ patientId }: { patientId: string }): React.JSX.E
         <div key={inv.id}>
           <button
             onClick={() => setOpenId(openId === inv.id ? null : inv.id)}
-            className="flex w-full items-center gap-3 rounded border border-slate-200 bg-white px-3 py-2 text-left text-sm hover:bg-slate-50"
+            className="flex w-full cursor-pointer items-center gap-4 card px-4 py-3 text-left text-sm transition hover:bg-canvas"
           >
             <span className="w-24 font-medium">{inv.number ?? 'Draft'}</span>
             <span className="text-slate-500">{inv.issueDate}</span>
-            <span className={`rounded px-2 py-0.5 text-xs ${statusCls[inv.status]}`}>
-              {inv.status}
-            </span>
+            <span className={`capitalize ${statusCls[inv.status]}`}>{inv.status}</span>
             <span className="ml-auto">{formatMoney(inv.totalCents)}</span>
           </button>
           {openId === inv.id && (

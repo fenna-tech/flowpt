@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-const inputCls = 'w-full rounded border border-slate-300 px-3 py-2 text-sm'
+const inputCls = 'input'
 const msg = (err: unknown): string =>
   (err as Error).message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
 
@@ -42,9 +42,12 @@ export function LockScreen({ status }: { status: 'setup' | 'locked' }): React.JS
   }
 
   return (
-    <div className="flex h-screen items-center justify-center bg-slate-100">
-      <form onSubmit={submit} className="w-80 space-y-3 rounded-lg bg-white p-6 shadow">
-        <h1 className="text-lg font-semibold">
+    <div className="flex h-screen items-center justify-center bg-canvas">
+      <form
+        onSubmit={submit}
+        className="w-80 space-y-3 rounded-2xl border border-line bg-surface p-8 shadow-sm"
+      >
+        <h1 className="section-title">
           {status === 'setup' ? 'Welcome to FlowPT' : 'FlowPT is locked'}
         </h1>
         {status === 'setup' && (
@@ -81,10 +84,7 @@ export function LockScreen({ status }: { status: 'setup' | 'locked' }): React.JS
         )}
         {error && <p className="text-sm text-red-600">{error}</p>}
         {wait > 0 && <p className="text-sm text-slate-500">Try again in {wait}s</p>}
-        <button
-          disabled={wait > 0}
-          className="w-full rounded bg-blue-600 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-40"
-        >
+        <button disabled={wait > 0} className="btn-primary w-full">
           {status === 'setup' ? 'Create' : 'Unlock'}
         </button>
         {status === 'setup' && (

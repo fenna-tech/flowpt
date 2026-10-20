@@ -2,11 +2,9 @@ import { useState } from 'react'
 import type { SyncStatus } from '@flowpt/shared'
 import { ago, msg, useSyncStatus } from './syncHooks'
 
-const inputCls = 'w-full rounded border border-slate-300 px-2 py-1.5 text-sm'
-const btn =
-  'rounded bg-blue-600 px-4 py-1.5 text-sm text-white hover:bg-blue-700 disabled:opacity-40'
-const btn2 =
-  'rounded border border-slate-300 px-4 py-1.5 text-sm hover:bg-slate-50 disabled:opacity-40'
+const inputCls = 'input'
+const btn = 'btn-primary'
+const btn2 = 'btn-secondary'
 
 // Small status line for the sidebar.
 export function SyncBadge(): React.JSX.Element | null {
@@ -20,9 +18,9 @@ export function SyncBadge(): React.JSX.Element | null {
     else if (s.pending > 0)
       [text, cls] = [`${s.pending} change${s.pending === 1 ? '' : 's'} waiting`, 'text-slate-500']
     else
-      [text, cls] = [s.lastSyncAt ? `Synced ${ago(s.lastSyncAt)}` : 'Connected', 'text-green-700']
+      [text, cls] = [s.lastSyncAt ? `Synced ${ago(s.lastSyncAt)}` : 'Connected', 'text-brand-600']
   }
-  return <div className={`px-3 py-1 text-xs ${cls}`}>{text}</div>
+  return <div className={`rounded-lg bg-white px-3 py-2 text-xs font-medium ${cls}`}>{text}</div>
 }
 
 // Account + MFA steps, shared by first-run onboarding and Settings.
@@ -221,7 +219,7 @@ export function SyncSettings(): React.JSX.Element {
 
   return (
     <div className="max-w-xl space-y-3">
-      <h2 className="text-xl font-semibold">Cloud sync</h2>
+      <h2 className="section-title">Cloud sync</h2>
       <p className="text-sm text-slate-500">
         Keeps your data backed up and shared across your devices. Signing in requires an
         authenticator app (MFA).
@@ -297,10 +295,7 @@ export function SyncSettings(): React.JSX.Element {
       )}
 
       {!s.managed && !showConfig && s.state !== 'unconfigured' && (
-        <button
-          className="text-xs text-blue-600 hover:underline"
-          onClick={() => setEditConfig(true)}
-        >
+        <button className="text-xs link" onClick={() => setEditConfig(true)}>
           Change project
         </button>
       )}

@@ -24,9 +24,9 @@ function Stat({
   tone?: string
 }): React.JSX.Element {
   return (
-    <div className="rounded border border-slate-200 bg-white p-4">
-      <div className="text-xs text-slate-500">{label}</div>
-      <div className={`mt-1 text-2xl font-semibold ${tone ?? ''}`}>{value}</div>
+    <div className="px-6 py-5">
+      <div className={`text-3xl font-semibold tracking-tight ${tone ?? ''}`}>{value}</div>
+      <div className="mt-1 text-sm text-muted">{label}</div>
     </div>
   )
 }
@@ -49,9 +49,9 @@ export function Dashboard({
   }))
 
   return (
-    <div className="max-w-4xl space-y-6">
-      <h2 className="text-xl font-semibold">Dashboard</h2>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+    <div className="space-y-8">
+      <h2 className="page-title">Overview</h2>
+      <div className="card grid grid-cols-2 divide-line md:grid-cols-4 md:divide-x">
         <Stat label="Outstanding" value={formatMoney(data.outstandingCents)} />
         <Stat
           label="Outstanding 30+ days"
@@ -62,8 +62,8 @@ export function Dashboard({
         <Stat label="Collected year to date" value={formatMoney(data.collectedYtdCents)} />
       </div>
 
-      <section className="rounded border border-slate-200 bg-white p-4">
-        <h3 className="mb-3 text-sm font-medium text-slate-700">Last 12 months</h3>
+      <section className="card p-6">
+        <h3 className="section-title mb-4">Last 12 months</h3>
         <div
           role="img"
           aria-label="Bar chart of invoiced and collected revenue per month"
@@ -71,33 +71,45 @@ export function Dashboard({
         >
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chart}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} tickFormatter={(v: number) => `$${v}`} />
-              <Tooltip formatter={(v) => formatMoney(Math.round(Number(v) * 100))} />
+              <CartesianGrid stroke="#e8eaee" vertical={false} />
+              <XAxis
+                dataKey="name"
+                tick={{ fontSize: 12, fill: '#6b7280' }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                tick={{ fontSize: 12, fill: '#6b7280' }}
+                axisLine={false}
+                tickLine={false}
+                tickFormatter={(v: number) => `$${v}`}
+              />
+              <Tooltip
+                cursor={{ fill: '#f7f8fa' }}
+                contentStyle={{ borderRadius: 10, border: '1px solid #e8eaee' }}
+                formatter={(v) => formatMoney(Math.round(Number(v) * 100))}
+              />
               <Legend />
-              <Bar dataKey="Invoiced" fill="#94a3b8" />
-              <Bar dataKey="Collected" fill="#2563eb" />
+              <Bar dataKey="Invoiced" fill="#b4d1c9" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="Collected" fill="#0a3d34" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
       </section>
 
       <section>
-        <h3 className="mb-2 text-sm font-medium text-slate-700">
-          Outstanding invoices ({data.outstanding.length})
-        </h3>
+        <h3 className="section-title mb-3">Outstanding invoices ({data.outstanding.length})</h3>
         {data.outstanding.length === 0 ? (
-          <p className="text-sm text-slate-500">Nothing outstanding.</p>
+          <p className="subtle">Nothing outstanding.</p>
         ) : (
-          <table className="w-full rounded border border-slate-200 bg-white text-left text-sm">
-            <thead className="text-xs text-slate-500">
+          <table className="w-full text-left text-sm">
+            <thead className="table-head">
               <tr>
-                <th className="px-3 py-2">Invoice</th>
-                <th className="px-3 py-2">Patient</th>
-                <th className="px-3 py-2">Date</th>
-                <th className="px-3 py-2">Age</th>
-                <th className="px-3 py-2 text-right">Amount</th>
+                <th className="rounded-l-lg px-4 py-3 font-medium">Invoice</th>
+                <th className="px-4 py-3 font-medium">Patient</th>
+                <th className="px-4 py-3 font-medium">Date</th>
+                <th className="px-4 py-3 font-medium">Status</th>
+                <th className="rounded-r-lg px-4 py-3 text-right font-medium">Amount</th>
               </tr>
             </thead>
             <tbody>
@@ -105,15 +117,17 @@ export function Dashboard({
                 <tr
                   key={o.id}
                   onClick={() => onOpenInvoice(o.patientId)}
-                  className="cursor-pointer border-t border-slate-200 hover:bg-slate-50"
+                  className="table-row cursor-pointer transition hover:bg-canvas"
                 >
-                  <td className="px-3 py-2">{o.number}</td>
-                  <td className="px-3 py-2">{o.patientName}</td>
-                  <td className="px-3 py-2">{o.issueDate}</td>
-                  <td className={`px-3 py-2 ${o.daysOutstanding > 30 ? 'text-red-600' : ''}`}>
-                    {o.daysOutstanding}d
+                  <td className="px-4 py-4 font-medium">{o.number}</td>
+                  <td className="px-4 py-4">{o.patientName}</td>
+                  <td className="px-4 py-4 text-slate-600">{o.issueDate}</td>
+                  <td className="px-4 py-4">
+                    <span className={o.daysOutstanding > 30 ? 'pill-void' : 'pill-unpaid'}>
+                      {o.daysOutstanding > 30 ? 'Overdue' : 'Unpaid'} · {o.daysOutstanding}d
+                    </span>
                   </td>
-                  <td className="px-3 py-2 text-right">{formatMoney(o.totalCents)}</td>
+                  <td className="px-4 py-4 text-right font-medium">{formatMoney(o.totalCents)}</td>
                 </tr>
               ))}
             </tbody>
