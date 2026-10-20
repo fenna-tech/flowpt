@@ -221,23 +221,6 @@ export interface SettingsApi {
   removeProfile(id: string): Promise<void>
 }
 
-// ---- App lock ----
-
-export type LockStatus = 'setup' | 'locked' | 'unlocked'
-export const LOCK_TIMEOUT_OPTIONS = [1, 5, 10, 15, 30, 60] as const // minutes
-
-export interface LockApi {
-  status(): Promise<LockStatus>
-  setup(name: string, pin: string): Promise<void> // first run: creates identity + PIN
-  unlock(pin: string): Promise<{ ok: boolean; retryAfterSec?: number }>
-  lock(): Promise<void>
-  activity(): void // renderer reports user activity to defer auto-lock
-  getTimeout(): Promise<number>
-  setTimeout(minutes: number): Promise<void>
-  changePin(oldPin: string, newPin: string): Promise<void>
-  onChange(cb: (status: LockStatus) => void): () => void
-}
-
 // ---- Dashboard ----
 
 export interface OutstandingInvoice {
@@ -280,8 +263,8 @@ export interface BackupResult {
 
 export interface BackupApi {
   // `pin` re-confirms the app PIN; `passphrase` encrypts the file and is needed to restore it.
-  exportTo(pin: string, passphrase: string): Promise<BackupResult>
-  restoreFrom(pin: string, passphrase: string): Promise<BackupResult>
+  exportTo(passphrase: string): Promise<BackupResult>
+  restoreFrom(passphrase: string): Promise<BackupResult>
 }
 
 // ---- Cloud sync ----
@@ -304,7 +287,7 @@ export interface SyncStatus {
 export interface SyncApi {
   status(): Promise<SyncStatus>
   configure(url: string, anonKey: string): Promise<void>
-  signUp(email: string, password: string): Promise<{ needsConfirmation: boolean }>
+  signUp(email: string, password: string, name: string): Promise<{ needsConfirmation: boolean }>
   signIn(email: string, password: string): Promise<{ state: SyncState }>
   verifyMfa(code: string): Promise<{ state: SyncState }>
   enrollMfa(): Promise<{ factorId: string; qrSvg: string; secret: string }>

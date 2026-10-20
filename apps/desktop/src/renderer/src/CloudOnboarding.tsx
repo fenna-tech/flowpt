@@ -1,7 +1,7 @@
 import type { SyncStatus } from '@flowpt/shared'
 import { SyncAuth } from './SyncPanel'
 
-// Shown once, right after the local PIN is set, until this device is linked to a cloud account.
+// The app's front door: shown whenever no account is signed in on this device (first run or after sign-out).
 export function CloudOnboarding({
   status,
   refresh
@@ -11,19 +11,18 @@ export function CloudOnboarding({
 }): React.JSX.Element {
   const title =
     status.state === 'signed-out'
-      ? 'Create your FlowPT account'
+      ? 'Sign in to FlowPT'
       : status.state === 'ready'
         ? 'Finishing setup…'
         : 'Protect your account'
   return (
     <div className="flex h-screen items-center justify-center bg-canvas">
       <div className="w-96 space-y-3 rounded-2xl border border-line bg-surface p-8 shadow-sm">
-        <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Step 2 of 2</p>
         <h1 className="section-title">{title}</h1>
         {status.state === 'signed-out' && (
           <p className="text-sm text-slate-500">
-            Your account keeps your data backed up and available on all your devices. Use the same
-            email on every device. Your PIN stays on this device only.
+            Your account protects patient data on this device and keeps it backed up across your
+            devices. Use the same email on every device.
           </p>
         )}
         <SyncAuth status={status} refresh={refresh} />

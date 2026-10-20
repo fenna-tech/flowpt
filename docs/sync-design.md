@@ -21,8 +21,8 @@ SQLite DB is the working copy; the cloud is the shared copy and the backup.
    idempotent, so re-fetching is harmless. The cursor is stored locally per table.
 4. **Apply.** A pulled row replaces the local one if its `updated_at` is newer, or the local row is clean.
    Locally dirty rows with a newer `updated_at` are kept and pushed (see conflicts).
-5. **When.** On launch, after unlock, on a 60 s timer, and after local writes (debounced 5 s). Offline
-   is normal: failures retry with backoff and never block the UI. Sync runs only while unlocked.
+5. **When.** On launch (once signed in), on a 60 s timer, and after local writes (debounced 5 s). Offline
+   is normal: failures retry with backoff and never block the UI. Sync runs only while signed in.
 
 ## Conflict policy
 | Data | Rule |
@@ -37,12 +37,11 @@ The same immutability rules run on the server (triggers), so a buggy or old clie
 
 ## Security model
 - Every table has `owner_id = auth.uid()` with row-level security. There are no DELETE policies, so a client
-  cannot hard-delete anything. `settings` only accepts the `practitioner` key (PIN hash and lock state never leave the device).
+  cannot hard-delete anything. `settings` only accepts the `practitioner` key (credentials never leave the device).
 - Audit entries are generated on the device and uploaded; the server rejects updates. Clinical content never goes in the audit log.
 - Supabase holds the data readable by the service (needed for future AI, search, password reset). Field-level
   encryption of note text can be added later without a protocol change.
-- **Account recovery:** because the cloud copy is readable, a forgotten password is recoverable via Supabase. A forgotten
-  *PIN* only locks the local app; sign in again and re-sync (the PIN hash is not in the cloud, so a new PIN is set on a fresh install).
+- **Account recovery:** because the cloud copy is readable, a forgotten password is recoverable via Supabase; sign in again and re-sync.
 
 ## Client work (next steps)
 1. Local migration: `dirty` flags and triggers; `sync_state` (per-table cursor, device id, leased invoice block).

@@ -31,6 +31,7 @@ import {
   configure,
   confirmMfa,
   enrollMfa,
+  isSignedIn,
   signIn,
   signOut,
   signUp,
@@ -39,19 +40,8 @@ import {
   syncSoon,
   verifyMfa
 } from './sync/runtime'
-import {
-  changePin,
-  getTimeout,
-  isUnlocked,
-  lockNow,
-  setTimeoutMinutes,
-  setup,
-  status,
-  touch,
-  unlock
-} from './lock'
 
-// Every data channel goes through `guarded`: while the app is locked, nothing is readable or writable.
+// Every data channel goes through `guarded`: without a signed-in account, nothing is readable or writable.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Handler = (...args: any[]) => unknown
 
@@ -59,10 +49,9 @@ const MUTATING =
   /:(create|update|remove|sign|addAddendum|issue|markPaid|void|saveProfile|removeProfile|savePractitioner)$/
 
 function guarded(channel: string, fn: Handler): void {
-  ipcMain.handle(channel, (_e, ...args) => {
-    if (!isUnlocked()) throw new Error('App is locked')
-    touch()
-    const result = fn(...args)
+  ipcMain.handle(channel, async (_e, ...args) => {
+    if (!(await isSignedIn())) throw new Error('Sign in to continue')
+    const result = await fn(...args)
     if (MUTATING.test(channel)) syncSoon() // debounced upload after local changes
     return result
   })
@@ -108,34 +97,22 @@ export function registerIpc(): void {
   guarded('audit:list', (patientId: string) => listAudit(patientId))
 
   guarded('dashboard:get', () => getDashboard())
-  guarded('backup:export', (pin: string, passphrase: string) => exportBackup(pin, passphrase))
-  guarded('backup:restore', (pin: string, passphrase: string) => restoreFromFile(pin, passphrase))
+  guarded('backup:export', (passphrase: string) => exportBackup(passphrase))
+  guarded('backup:restore', (passphrase: string) => restoreFromFile(passphrase))
 
-  guarded('sync:status', () => syncStatus())
-  guarded('sync:configure', (url: string, key: string) => configure(url, key))
-  guarded('sync:signUp', (email: string, pw: string) => signUp(email, pw))
-  guarded('sync:signIn', async (email: string, pw: string) => ({ state: await signIn(email, pw) }))
-  guarded('sync:verifyMfa', async (code: string) => ({ state: await verifyMfa(code) }))
-  guarded('sync:enrollMfa', () => enrollMfa())
-  guarded('sync:confirmMfa', async (id: string, code: string) => ({
+  ipcMain.handle('sync:status', () => syncStatus())
+  ipcMain.handle('sync:configure', (_e, url: string, key: string) => configure(url, key))
+  ipcMain.handle('sync:signUp', (_e, email: string, pw: string, name: string) =>
+    signUp(email, pw, name)
+  )
+  ipcMain.handle('sync:signIn', async (_e, email: string, pw: string) => ({
+    state: await signIn(email, pw)
+  }))
+  ipcMain.handle('sync:verifyMfa', async (_e, code: string) => ({ state: await verifyMfa(code) }))
+  ipcMain.handle('sync:enrollMfa', () => enrollMfa())
+  ipcMain.handle('sync:confirmMfa', async (_e, id: string, code: string) => ({
     state: await confirmMfa(id, code)
   }))
-  guarded('sync:signOut', () => signOut())
+  ipcMain.handle('sync:signOut', () => signOut())
   guarded('sync:syncNow', () => syncNow())
-
-  // Lock channels. Only status/setup/unlock work while locked.
-  ipcMain.handle('lock:status', () => status())
-  ipcMain.handle('lock:setup', (_e, name: string, pin: string) => setup(name, pin))
-  ipcMain.handle('lock:unlock', (_e, pin: string) => {
-    const res = unlock(pin)
-    if (res.ok) syncSoon(1000)
-    return res
-  })
-  guarded('lock:lock', () => lockNow('manual'))
-  guarded('lock:getTimeout', () => getTimeout())
-  guarded('lock:setTimeout', (minutes: number) => setTimeoutMinutes(minutes))
-  guarded('lock:changePin', (oldPin: string, newPin: string) => changePin(oldPin, newPin))
-  ipcMain.on('lock:activity', () => {
-    if (isUnlocked()) touch()
-  })
 }

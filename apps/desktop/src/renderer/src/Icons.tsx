@@ -45,10 +45,11 @@ export const SettingsIcon = (p: P): React.JSX.Element => (
   </Icon>
 )
 
-export const LockIcon = (p: P): React.JSX.Element => (
+export const LogOutIcon = (p: P): React.JSX.Element => (
   <Icon {...p}>
-    <rect x="4" y="11" width="16" height="10" rx="2" />
-    <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+    <path d="m16 17 5-5-5-5" />
+    <path d="M21 12H9" />
   </Icon>
 )
 

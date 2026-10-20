@@ -1,11 +1,10 @@
 import { hostname } from 'os'
 import { randomUUID } from 'crypto'
-import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { createClient, isAuthRetryableFetchError, type SupabaseClient } from '@supabase/supabase-js'
 import type { SyncState, SyncStatus } from '@flowpt/shared'
 import { getDb } from '../db/connection'
-import { getSetting, setSetting } from '../db/settings'
+import { getPractitioner, getSetting, savePractitioner, setSetting } from '../db/settings'
 import { logAudit } from '../db/audit'
-import { isUnlocked } from '../lock'
 import { kvGet, kvSet, pendingCount, runSync, type Remote, type Row } from './engine'
 
 // Wires the pure engine to Supabase: configuration, sign-in (+ mandatory TOTP MFA), device registration
@@ -18,6 +17,7 @@ let lastSyncAt: string | null = null
 let lastError: string | null = null
 let conflicts = 0
 let soonTimer: NodeJS.Timeout | null = null
+let authOkUntil = 0
 
 const storage = {
   getItem: (k: string): string | null => getSetting(`auth:${k}`),
@@ -75,12 +75,31 @@ export function configure(url: string, anonKey: string): void {
 async function computeState(): Promise<{ state: SyncState; email: string | null }> {
   const c = getClient()
   if (!c) return { state: 'unconfigured', email: null }
-  const { data } = await c.auth.getSession()
+  const { data, error } = await c.auth.getSession()
+  // Offline with an expired access token: the stored session is still valid, so keep the user in.
+  if (!data.session && error && isAuthRetryableFetchError(error) && kvGet(getDb(), 'sync_user')) {
+    return { state: 'ready', email: null }
+  }
   if (!data.session) return { state: 'signed-out', email: null }
   const email = data.session.user.email ?? null
   const aal = await c.auth.mfa.getAuthenticatorAssuranceLevel()
   if (aal.data?.currentLevel === 'aal2') return { state: 'ready', email }
   return { state: aal.data?.nextLevel === 'aal2' ? 'mfa-needed' : 'mfa-enroll', email }
+}
+
+// Gate for every data IPC call: the user must hold a signed-in (MFA-verified) cloud session on a
+// linked device. Dev builds with no cloud project configured have no account to gate on.
+export async function isSignedIn(): Promise<boolean> {
+  if (Date.now() < authOkUntil) return true
+  if (!getClient()) return true
+  let ok = false
+  try {
+    ok = (await computeState()).state === 'ready' && Boolean(kvGet(getDb(), 'sync_user'))
+  } catch {
+    ok = false
+  }
+  authOkUntil = ok ? Date.now() + 5000 : 0
+  return ok
 }
 
 export async function status(): Promise<SyncStatus> {
@@ -124,6 +143,13 @@ async function finalize(): Promise<void> {
   kvSet(db, 'device_id', deviceId)
   if (!linked) {
     kvSet(db, 'sync_user', user.id)
+    const name = user.user_metadata?.name
+    if (typeof name === 'string' && name.trim() && !getPractitioner().name) {
+      savePractitioner({ ...getPractitioner(), name: name.trim().slice(0, 100) })
+      // Backdate the profile so that, on a new device, the cloud copy (with the full business details)
+      // wins over this name-only stub, while a brand-new account still uploads it.
+      setSetting('practitioner_updated_at', '1970-01-01T00:00:00.000Z')
+    }
     logAudit('sync.enabled', 'app', 'app', null)
   }
   syncSoon(500)
@@ -131,9 +157,16 @@ async function finalize(): Promise<void> {
 
 export async function signUp(
   email: string,
-  password: string
+  password: string,
+  name: string
 ): Promise<{ needsConfirmation: boolean }> {
-  const { data, error } = await need().auth.signUp({ email, password })
+  const clean = typeof name === 'string' ? name.trim().slice(0, 100) : ''
+  if (!clean) throw new Error('Your name is required')
+  const { data, error } = await need().auth.signUp({
+    email,
+    password,
+    options: { data: { name: clean } }
+  })
   if (error) throw new Error(error.message)
   return { needsConfirmation: !data.session }
 }
@@ -184,8 +217,13 @@ export async function confirmMfa(factorId: string, code: string): Promise<SyncSt
 }
 
 export async function signOut(): Promise<void> {
+  authOkUntil = 0
   const c = getClient()
-  if (c) await c.auth.signOut()
+  if (c) {
+    // The server call fails offline; the local session must be dropped regardless.
+    await c.auth.signOut().catch(() => undefined)
+    await c.auth.signOut({ scope: 'local' })
+  }
   logAudit('sync.signout', 'app', 'app', null)
 }
 
@@ -224,7 +262,7 @@ function supabaseRemote(c: SupabaseClient, ownerId: string): Remote {
 }
 
 export async function syncNow(): Promise<SyncStatus> {
-  if (syncing || !isUnlocked()) return status()
+  if (syncing) return status()
   const c = getClient()
   const db = getDb()
   const deviceId = kvGet(db, 'device_id')
@@ -260,7 +298,7 @@ export function syncSoon(delayMs = 5000): void {
 
 export function startSyncLoop(): void {
   const t = setInterval(() => {
-    if (isUnlocked()) void syncNow()
+    void syncNow()
   }, 60_000)
   t.unref()
 }

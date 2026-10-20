@@ -8,18 +8,16 @@ import { Dashboard } from './Dashboard'
 import { SyncBadge } from './SyncPanel'
 import { CloudOnboarding } from './CloudOnboarding'
 import { useSyncStatus } from './syncHooks'
-import { LockScreen } from './LockScreen'
 import {
   ChevronLeftIcon,
   HomeIcon,
-  LockIcon,
+  LogOutIcon,
   LogoMark,
   PlusIcon,
   SearchIcon,
   SettingsIcon,
   UsersIcon
 } from './Icons'
-import { useActivityPings, useLockStatus } from './lockHooks'
 
 const empty: PatientInput = {
   firstName: '',
@@ -44,7 +42,7 @@ const fields: { key: keyof PatientInput; label: string; type?: string }[] = [
 
 const inputCls = 'input'
 
-function Workspace(): React.JSX.Element {
+function Workspace({ onSignOut }: { onSignOut: () => void }): React.JSX.Element {
   const [patients, setPatients] = useState<Patient[]>([])
   const [search, setSearch] = useState('')
   const [selectedId, setSelectedId] = useState<string | 'new' | null>(null)
@@ -163,11 +161,11 @@ function Workspace(): React.JSX.Element {
         <nav className="space-y-1">
           {nav('settings', 'Settings', <SettingsIcon />, () => setView('settings'))}
           <button
-            onClick={() => window.api.lock.lock()}
+            onClick={onSignOut}
             className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left text-[15px] text-slate-600 transition hover:bg-white hover:text-ink"
           >
-            <LockIcon />
-            Lock now
+            <LogOutIcon />
+            Sign out
           </button>
         </nav>
 
@@ -337,22 +335,23 @@ function Workspace(): React.JSX.Element {
   )
 }
 
-// First run: a managed build requires a cloud account (and MFA) before the workspace opens.
-// After the device is linked, the workspace always opens, so offline use never depends on the network.
-function Gate(): React.JSX.Element {
+// Signing in to the cloud account is what protects the app: without a signed-in (MFA-verified)
+// session on this device, the workspace is never mounted and the main process refuses data calls.
+// The session persists locally, so a linked device still opens offline. Dev builds with no cloud
+// project configured skip the gate.
+function App(): React.JSX.Element {
   const [sync, refresh] = useSyncStatus(2000)
   if (!sync) return <div />
-  if (sync.managed && !sync.linked) return <CloudOnboarding status={sync} refresh={refresh} />
-  return <Workspace />
-}
-
-// The workspace is unmounted while locked, so no patient data lingers in renderer state.
-function App(): React.JSX.Element {
-  const status = useLockStatus()
-  useActivityPings(status === 'unlocked')
-  if (status === null) return <div />
-  if (status !== 'unlocked') return <LockScreen status={status} />
-  return <Gate />
+  const signedIn = sync.state === 'ready' && sync.linked
+  if (sync.state !== 'unconfigured' && !signedIn) {
+    return <CloudOnboarding status={sync} refresh={refresh} />
+  }
+  // The workspace is unmounted on sign-out, so no patient data lingers in renderer state.
+  const signOut = async (): Promise<void> => {
+    await window.api.sync.signOut()
+    await refresh()
+  }
+  return <Workspace onSignOut={() => void signOut()} />
 }
 
 export default App
