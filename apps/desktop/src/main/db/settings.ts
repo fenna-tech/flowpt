@@ -1,5 +1,7 @@
 import {
   BILLING_PROFILES,
+  DEFAULT_INVOICE_COLOR,
+  INVOICE_FONTS,
   PRIVATE_PROFILE,
   type BillingProfile,
   type PractitionerProfile
@@ -31,7 +33,9 @@ const EMPTY_PRACTITIONER: PractitionerProfile = {
   gstNumber: '',
   address: '',
   phone: '',
-  email: ''
+  email: '',
+  invoiceFont: 'sans',
+  invoiceColor: DEFAULT_INVOICE_COLOR
 }
 
 export function getPractitioner(): PractitionerProfile {
@@ -51,7 +55,11 @@ export function savePractitioner(p: PractitionerProfile): PractitionerProfile {
     gstNumber: str(p?.gstNumber, 50),
     address: str(p?.address, 500),
     phone: str(p?.phone, 50),
-    email: str(p?.email, 200)
+    email: str(p?.email, 200),
+    invoiceFont: INVOICE_FONTS.some((f) => f.id === p?.invoiceFont) ? p.invoiceFont : 'sans',
+    invoiceColor: /^#[0-9a-f]{6}$/i.test(p?.invoiceColor ?? '')
+      ? p.invoiceColor.toLowerCase()
+      : DEFAULT_INVOICE_COLOR
   }
   setSetting('practitioner', JSON.stringify(clean))
   setSetting('practitioner_updated_at', new Date().toISOString())

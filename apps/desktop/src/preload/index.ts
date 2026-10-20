@@ -40,6 +40,7 @@ const invoices: InvoiceApi = {
 }
 
 const settings: SettingsApi = {
+  previewInvoice: (p) => ipcRenderer.invoke('settings:previewInvoice', p),
   getPractitioner: () => ipcRenderer.invoke('settings:getPractitioner'),
   savePractitioner: (p) => ipcRenderer.invoke('settings:savePractitioner', p),
   listProfiles: () => ipcRenderer.invoke('settings:listProfiles')

@@ -134,7 +134,27 @@ export interface PractitionerProfile {
   address: string
   phone: string
   email: string
+  invoiceFont: InvoiceFontId
+  invoiceColor: string // accent colour for invoice PDFs, #rrggbb
 }
+
+export const INVOICE_FONTS = [
+  { id: 'sans', label: 'Modern sans' },
+  { id: 'humanist', label: 'Friendly sans' },
+  { id: 'serif', label: 'Classic serif' },
+  { id: 'elegant', label: 'Elegant serif' }
+] as const
+export type InvoiceFontId = (typeof INVOICE_FONTS)[number]['id']
+
+export const INVOICE_COLORS = [
+  { label: 'Forest', value: '#0a3d34' },
+  { label: 'Ocean', value: '#0b4f8a' },
+  { label: 'Plum', value: '#6b2d5c' },
+  { label: 'Sunset', value: '#c2410c' },
+  { label: 'Rose', value: '#be185d' },
+  { label: 'Slate', value: '#334155' }
+] as const
+export const DEFAULT_INVOICE_COLOR = INVOICE_COLORS[0].value
 
 // Funding types: a fixed set of billing profiles. Programs bill a named payer, private pay bills the patient.
 export interface BillingProfile {
@@ -239,6 +259,7 @@ export interface InvoiceApi {
 }
 
 export interface SettingsApi {
+  previewInvoice(p: PractitionerProfile): Promise<string>
   getPractitioner(): Promise<PractitionerProfile>
   savePractitioner(p: PractitionerProfile): Promise<PractitionerProfile>
   listProfiles(): Promise<BillingProfile[]>
