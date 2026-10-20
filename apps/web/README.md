@@ -62,9 +62,13 @@ unchanged, and any verified factor satisfies them.
   your last factor.
 - Passkeys are bound to the site's domain. One registered on `localhost` will not work on the
   production hostname; register again there. Changing the domain later orphans existing passkeys.
-- **Needs enabling on the project (not done):** Supabase dashboard > Authentication > MFA > turn on
-  WebAuthn enrol and verify (or add an `[auth.mfa.web_authn]` block with `enroll_enabled` and
-  `verify_enabled` to `supabase/config.toml` and push it; I did not edit that file). Until then,
+- **Production domain:** the site is published at `https://flowpt.fenna.tech`, so passkeys should be
+  registered there. Treat that hostname as permanent. The `[auth.mfa.web_authn]` block is now in
+  `supabase/config.toml` (local dev config).
+- **Needs enabling on the hosted project (not done):** Supabase dashboard > Authentication > MFA >
+  turn on WebAuthn enrol and verify, and set Site URL / redirect allow-list to
+  `https://flowpt.fenna.tech` (and `http://localhost:5173` for dev). I have no access to the project,
+  so these are yours to apply. Until then,
   "Add passkey" fails with a server error and TOTP is unaffected.
 - Not exercised against a live project or a real authenticator.
 
