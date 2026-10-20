@@ -43,6 +43,7 @@ export function SyncAuth({
   )
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
+  const [waiting, setWaiting] = useState(false)
 
   const run = async (fn: () => Promise<unknown>): Promise<void> => {
     setBusy(true)
@@ -119,6 +120,36 @@ export function SyncAuth({
               Sign in with a passkey
             </button>
           )}
+          {mode === 'signin' &&
+            window.api.sync.signInWithBrowser &&
+            (waiting ? (
+              <div className="space-y-2">
+                <p className="text-sm text-slate-600">
+                  Finish signing in with your passkey in the browser window that just opened.
+                </p>
+                <button
+                  type="button"
+                  className={`${btn2} w-full`}
+                  onClick={() => void window.api.sync.cancelBrowserSignIn?.()}
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                disabled={busy}
+                className={`${btn2} w-full`}
+                onClick={() => {
+                  setWaiting(true)
+                  void run(() => window.api.sync.signInWithBrowser!()).finally(() =>
+                    setWaiting(false)
+                  )
+                }}
+              >
+                Sign in with browser (passkey)
+              </button>
+            ))}
           <p className="text-xs text-slate-500">
             {mode === 'create' ? 'Already have an account? ' : 'New here? '}
             <button

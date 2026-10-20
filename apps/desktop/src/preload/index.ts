@@ -61,6 +61,8 @@ const sync: SyncApi = {
   verifyMfa: (code) => ipcRenderer.invoke('sync:verifyMfa', code),
   enrollMfa: () => ipcRenderer.invoke('sync:enrollMfa'),
   confirmMfa: (id, code) => ipcRenderer.invoke('sync:confirmMfa', id, code),
+  signInWithBrowser: () => ipcRenderer.invoke('sync:signInWithBrowser'),
+  cancelBrowserSignIn: () => ipcRenderer.invoke('sync:cancelBrowserSignIn'),
   signOut: () => ipcRenderer.invoke('sync:signOut'),
   syncNow: () => ipcRenderer.invoke('sync:syncNow')
 }

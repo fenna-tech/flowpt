@@ -21,6 +21,13 @@ export const supabase: SupabaseClient = createClient(
   }
 )
 
+// A client that keeps nothing: used to mint a separate session for the desktop hand-off, so the
+// desktop never shares the web app's refresh-token family.
+export const createEphemeralClient = (): SupabaseClient =>
+  createClient(URL_, KEY, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+  })
+
 export const nowIso = (): string => new Date().toISOString()
 
 export function check<T>(res: { data: T | null; error: PostgrestError | null }): T {

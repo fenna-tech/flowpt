@@ -5,6 +5,7 @@ import { createRoot } from 'react-dom/client'
 import { App } from '@flowpt/ui'
 import { webApi } from './api'
 import { isConfigured } from './api/core'
+import { DesktopAuth } from './DesktopAuth'
 
 const root = createRoot(document.getElementById('root')!)
 
@@ -24,9 +25,6 @@ if (!isConfigured) {
 } else {
   // The shared UI reads its backend from window.api, exactly as in the desktop app.
   window.api = webApi
-  root.render(
-    <StrictMode>
-      <App />
-    </StrictMode>
-  )
+  const desktopAuth = new URLSearchParams(window.location.search).has('desktop-auth')
+  root.render(<StrictMode>{desktopAuth ? <DesktopAuth /> : <App />}</StrictMode>)
 }

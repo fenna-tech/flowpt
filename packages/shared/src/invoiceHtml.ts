@@ -5,40 +5,35 @@ import {
   type Invoice,
   type InvoiceFontId,
   type InvoiceSnapshot,
-  type PractitionerProfile,
-} from "./models";
+  type PractitionerProfile
+} from './models'
 
 const esc = (s: string): string =>
   s.replace(
     /[&<>"']/g,
-    (c) =>
-      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
-        c
-      ]!,
-  );
-const nl = (s: string): string => esc(s).replace(/\n/g, "<br>");
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!
+  )
+const nl = (s: string): string => esc(s).replace(/\n/g, '<br>')
 
 const FONT_STACKS: Record<InvoiceFontId, string> = {
   sans: "'Helvetica Neue', Helvetica, Arial, sans-serif",
   humanist: "'Avenir Next', 'Segoe UI', Calibri, 'Trebuchet MS', sans-serif",
   serif: "Georgia, 'Times New Roman', serif",
-  elegant: "'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif",
-};
+  elegant: "'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif"
+}
 
 // Readable text colour on top of the accent colour.
 function inkOn(hex: string): string {
-  const [r, g, b] = [1, 3, 5].map(
-    (i) => parseInt(hex.slice(i, i + 2), 16) / 255,
-  );
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.6 ? "#111" : "#fff";
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.6 ? '#111' : '#fff'
 }
 
 export interface InvoiceView {
-  practitioner: PractitionerProfile;
-  style: Pick<PractitionerProfile, "invoiceFont" | "invoiceColor">;
-  patient: InvoiceSnapshot["patient"];
-  profile: InvoiceSnapshot["profile"];
-  inv: Invoice;
+  practitioner: PractitionerProfile
+  style: Pick<PractitionerProfile, 'invoiceFont' | 'invoiceColor'>
+  patient: InvoiceSnapshot['patient']
+  profile: InvoiceSnapshot['profile']
+  inv: Invoice
 }
 
 export function buildInvoiceHtml({
@@ -46,32 +41,30 @@ export function buildInvoiceHtml({
   style,
   patient,
   profile,
-  inv,
+  inv
 }: InvoiceView): string {
-  const accent = /^#[0-9a-f]{6}$/i.test(style.invoiceColor)
-    ? style.invoiceColor
-    : "#0a3d34";
-  const font = FONT_STACKS[style.invoiceFont] ?? FONT_STACKS.sans;
-  const showCode = inv.items.some((i) => i.code);
-  const insured = profile.payerLabel !== "";
+  const accent = /^#[0-9a-f]{6}$/i.test(style.invoiceColor) ? style.invoiceColor : '#0a3d34'
+  const font = FONT_STACKS[style.invoiceFont] ?? FONT_STACKS.sans
+  const showCode = inv.items.some((i) => i.code)
+  const insured = profile.payerLabel !== ''
   const rows = inv.items
     .map(
       (i) => `<tr>
         <td>${esc(i.description)}</td>
-        ${showCode ? `<td class="muted">${esc(i.code)}</td>` : ""}
+        ${showCode ? `<td class="muted">${esc(i.code)}</td>` : ''}
         <td class="r">${i.quantity}</td>
         <td class="r">${formatMoney(i.unitCents)}</td>
-        <td class="r amt">${formatMoney(lineTotalCents(i))}</td></tr>`,
+        <td class="r amt">${formatMoney(lineTotalCents(i))}</td></tr>`
     )
-    .join("");
+    .join('')
   const status =
-    inv.status === "paid"
-      ? `<div class="pill paid">Paid ${esc(inv.paidAt ?? "")}</div>`
-      : inv.status === "void"
+    inv.status === 'paid'
+      ? `<div class="pill paid">Paid ${esc(inv.paidAt ?? '')}</div>`
+      : inv.status === 'void'
         ? '<div class="pill void">Void</div>'
-        : inv.status === "issued"
+        : inv.status === 'issued'
           ? '<div class="pill due">Payment due</div>'
-          : "";
+          : ''
 
   return `<!doctype html><html><head><meta charset="utf-8"><style>
     :root{--accent:${accent};--ink:${inkOn(accent)};--tint:color-mix(in srgb,var(--accent) 9%,white);--line:color-mix(in srgb,var(--accent) 18%,white)}
@@ -108,43 +101,43 @@ export function buildInvoiceHtml({
   <div class="band">
     <div>
       <div class="biz">${esc(p.businessName || p.name)}</div>
-      <div class="who">${esc(p.name)}${p.credentials ? ", " + esc(p.credentials) : ""}</div>
+      <div class="who">${esc(p.name)}${p.credentials ? ', ' + esc(p.credentials) : ''}</div>
     </div>
-    <div><div class="word">INVOICE</div><div class="num">${esc(inv.number ?? "")}</div></div>
+    <div><div class="word">INVOICE</div><div class="num">${esc(inv.number ?? '')}</div></div>
   </div>
   <div class="meta">
     <div class="muted">
-      ${p.registrationNo ? `<div>Reg. # ${esc(p.registrationNo)}</div>` : ""}
+      ${p.registrationNo ? `<div>Reg. # ${esc(p.registrationNo)}</div>` : ''}
       <div>${nl(p.address)}</div>
-      <div>${esc([p.phone, p.email].filter(Boolean).join(" · "))}</div>
-      ${p.gstNumber ? `<div>GST # ${esc(p.gstNumber)}</div>` : ""}
+      <div>${esc([p.phone, p.email].filter(Boolean).join(' · '))}</div>
+      ${p.gstNumber ? `<div>GST # ${esc(p.gstNumber)}</div>` : ''}
     </div>
     <div class="r"><div class="muted">Date</div><div><b>${esc(inv.issueDate)}</b></div>${status}</div>
   </div>
   <div class="cards">
     <div class="card"><div class="label">Bill to</div><b>${esc(patient.name)}</b><br>${nl(patient.address)}
-      ${insured && patient.phn ? `<br>PHN: ${esc(patient.phn)}` : ""}
-      ${insured && patient.dob ? `<br>DOB: ${esc(patient.dob)}` : ""}</div>
+      ${insured && patient.phn ? `<br>PHN: ${esc(patient.phn)}` : ''}
+      ${insured && patient.dob ? `<br>DOB: ${esc(patient.dob)}` : ''}</div>
     ${
       insured
         ? `<div class="card"><div class="label">${esc(profile.payerLabel)}</div><b>${esc(inv.payerName)}</b>
-           ${inv.policyNumber ? `<br>Policy / claim #: ${esc(inv.policyNumber)}` : ""}
+           ${inv.policyNumber ? `<br>Policy / claim #: ${esc(inv.policyNumber)}` : ''}
            <div class="muted">${esc(profile.name)}</div></div>`
-        : ""
+        : ''
     }
   </div>
-  <table><thead><tr><th>Description</th>${showCode ? "<th>Code</th>" : ""}
+  <table><thead><tr><th>Description</th>${showCode ? '<th>Code</th>' : ''}
     <th class="r">Qty</th><th class="r">Unit price</th><th class="r">Amount</th></tr></thead>
     <tbody>${rows}</tbody></table>
   <div class="totals">
     <div><span class="muted">Subtotal</span><span>${formatMoney(inv.subtotalCents)}</span></div>
-    ${inv.taxPct > 0 ? `<div><span class="muted">Tax (${inv.taxPct}%)</span><span>${formatMoney(inv.taxCents)}</span></div>` : ""}
+    ${inv.taxPct > 0 ? `<div><span class="muted">Tax (${inv.taxPct}%)</span><span>${formatMoney(inv.taxCents)}</span></div>` : ''}
     <div class="total"><span>Total (CAD)</span><span>${formatMoney(inv.totalCents)}</span></div>
   </div>
-  ${inv.notes ? `<div class="foot"><div class="label">Notes</div>${nl(inv.notes)}</div>` : ""}
-  ${profile.footerNote ? `<div class="foot">${nl(profile.footerNote)}</div>` : ""}
+  ${inv.notes ? `<div class="foot"><div class="label">Notes</div>${nl(inv.notes)}</div>` : ''}
+  ${profile.footerNote ? `<div class="foot">${nl(profile.footerNote)}</div>` : ''}
   <div class="thanks"><span>Thank you</span><span>${esc(p.businessName || p.name)}</span></div>
-  </body></html>`;
+  </body></html>`
 }
 
 // Issued invoices keep the practitioner details they were issued with; the look (font, colour) is
@@ -152,57 +145,57 @@ export function buildInvoiceHtml({
 export function buildIssuedInvoiceHtml(
   snap: InvoiceSnapshot,
   inv: Invoice,
-  style: Pick<PractitionerProfile, "invoiceFont" | "invoiceColor">,
+  style: Pick<PractitionerProfile, 'invoiceFont' | 'invoiceColor'>
 ): string {
   return buildInvoiceHtml({
     practitioner: snap.practitioner,
     style: { invoiceFont: style.invoiceFont, invoiceColor: style.invoiceColor },
     patient: snap.patient,
     profile: snap.profile,
-    inv,
-  });
+    inv
+  })
 }
 
 // Sample invoice for the live preview in Settings (uses the unsaved form values).
 export function previewInvoiceHtml(p: PractitionerProfile): string {
   const items = [
     {
-      description: "Initial assessment",
-      code: "",
+      description: 'Initial assessment',
+      code: '',
       quantity: 1,
-      unitCents: 9500,
+      unitCents: 9500
     },
     {
-      description: "Treatment session",
-      code: "",
+      description: 'Treatment session',
+      code: '',
       quantity: 3,
-      unitCents: 7500,
-    },
-  ];
-  const totals = computeTotals(items, 0);
+      unitCents: 7500
+    }
+  ]
+  const totals = computeTotals(items, 0)
   const inv = {
-    number: "INV-0042",
-    issueDate: new Date().toLocaleDateString("en-CA"),
-    status: "issued",
+    number: 'INV-0042',
+    issueDate: new Date().toLocaleDateString('en-CA'),
+    status: 'issued',
     paidAt: null,
-    payerName: "AHP",
-    policyNumber: "",
+    payerName: 'AHP',
+    policyNumber: '',
     items,
     taxPct: 0,
-    notes: "Thank you for choosing us.",
-    ...totals,
-  } as Invoice;
+    notes: 'Thank you for choosing us.',
+    ...totals
+  } as Invoice
   return buildInvoiceHtml({
     practitioner: p,
     style: p,
     patient: {
-      name: "Sample Client",
-      dob: "",
-      phn: "",
-      address: "123 Example St\nVancouver, BC",
-      email: "",
+      name: 'Sample Client',
+      dob: '',
+      phn: '',
+      address: '123 Example St\nVancouver, BC',
+      email: ''
     },
-    profile: { name: "Private pay", payerLabel: "", footerNote: "" },
-    inv,
-  });
+    profile: { name: 'Private pay', payerLabel: '', footerNote: '' },
+    inv
+  })
 }

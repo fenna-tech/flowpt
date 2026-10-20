@@ -69,6 +69,26 @@ Supabase's native passkeys (Authentication > Passkeys in the dashboard, Relying 
   Treat that hostname as permanent.
 - Not tested end to end after this change.
 
+### Passkey sign-in for the desktop app (browser hand-off)
+
+The desktop app cannot hold passkeys, so **Sign in with browser (passkey)** on its sign-in screen
+opens `https://flowpt.fenna.tech/?desktop-auth#...` in your browser. You tap your passkey there and
+the browser returns a session to the app, which then skips the authenticator prompt as on the web.
+
+- The desktop starts a one-shot server on `127.0.0.1:<random port>` (loopback redirect, as in
+  RFC 8252) and makes a throwaway ECDH key pair. The browser page signs in with a **separate,
+  non-persisted** client (so the desktop never shares the web app's refresh token), encrypts the new
+  session to the desktop's public key (`packages/shared/src/handoff.ts`, AES-GCM, `state` as
+  authenticated data) and redirects to the loopback address. A program that reads the redirect cannot
+  decrypt it, and a reply for a different attempt is rejected. The attempt times out after 3 minutes
+  and can be cancelled.
+- Needs no schema or Supabase changes beyond the passkey migration already applied. The desktop opens
+  the production site by default; override with `MAIN_VITE_WEB_URL` at build time.
+- Passkeys work only on the production domain, so this works against production only.
+- Tested: the encryption (`npm run test:shared`). Not tested end to end (needs the deployed page, a
+  passkey and a desktop build), including that the desktop session keeps its passkey `amr` after the
+  first token refresh (the web app relies on the same behaviour).
+
 ## Decisions and open questions
 
 1. **Not yet exercised against a live project.** It typechecks, lints and builds, and the sign-in

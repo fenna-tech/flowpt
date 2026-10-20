@@ -1,7 +1,14 @@
+import { createServer, type Server } from 'http'
 import { hostname } from 'os'
-import { randomUUID } from 'crypto'
+import { randomBytes, randomUUID, timingSafeEqual } from 'crypto'
+import { BrowserWindow, shell } from 'electron'
 import { createClient, isAuthRetryableFetchError, type SupabaseClient } from '@supabase/supabase-js'
-import type { SyncState, SyncStatus } from '@flowpt/shared'
+import {
+  generateHandoffKeys,
+  openFromBrowser,
+  type SyncState,
+  type SyncStatus
+} from '@flowpt/shared'
 import { getDb } from '../db/connection'
 import { getPractitioner, getSetting, savePractitioner, setSetting } from '../db/settings'
 import { logAudit } from '../db/audit'
@@ -84,6 +91,12 @@ async function computeState(): Promise<{ state: SyncState; email: string | null 
   const email = data.session.user.email ?? null
   const aal = await c.auth.mfa.getAuthenticatorAssuranceLevel()
   if (aal.data?.currentLevel === 'aal2') return { state: 'ready', email }
+  // A passkey sign-in (done in the browser, see signInWithBrowser) is the second factor too, and the
+  // database accepts it, so there is no authenticator prompt.
+  const methods = (aal.data?.currentAuthenticationMethods ?? []) as ({ method?: string } | string)[]
+  if (methods.some((m) => (typeof m === 'string' ? m : m.method) === 'passkey')) {
+    return { state: 'ready', email }
+  }
   return { state: aal.data?.nextLevel === 'aal2' ? 'mfa-needed' : 'mfa-enroll', email }
 }
 
@@ -211,6 +224,97 @@ export async function confirmMfa(factorId: string, code: string): Promise<SyncSt
   if (res.error) throw new Error(res.error.message)
   await finalize()
   return 'ready'
+}
+
+// ---------- sign in with the browser (passkey) ----------
+// Electron cannot hold passkeys for the web domain, so the browser does the passkey sign-in and hands
+// the new session back over a loopback redirect (RFC 8252). The session is encrypted to a key that
+// only this process holds (see packages/shared/src/handoff.ts); `state` ties the reply to this attempt.
+
+const WEB_URL: string = (import.meta.env.MAIN_VITE_WEB_URL ?? 'https://flowpt.fenna.tech').replace(
+  /\/+$/,
+  ''
+)
+const HANDOFF_TIMEOUT_MS = 3 * 60_000
+let handoff: { server: Server; fail: (e: Error) => void } | null = null
+
+export function cancelBrowserSignIn(): void {
+  handoff?.fail(new Error('Browser sign-in cancelled'))
+}
+
+const page = (msg: string): string =>
+  `<!doctype html><meta charset="utf-8"><title>FlowPT</title><body style="font:16px system-ui;margin:3rem">${msg}</body>`
+
+export async function signInWithBrowser(): Promise<SyncState> {
+  const c = need()
+  cancelBrowserSignIn()
+  const keys = await generateHandoffKeys()
+  const state = randomBytes(24).toString('base64url')
+
+  const params = await new Promise<URLSearchParams>((resolve, reject) => {
+    const server = createServer((req, res) => {
+      const url = new URL(req.url ?? '/', 'http://127.0.0.1')
+      const got = url.searchParams.get('state') ?? ''
+      const valid =
+        url.pathname === '/cb' &&
+        got.length === state.length &&
+        timingSafeEqual(Buffer.from(got), Buffer.from(state))
+      if (!valid) {
+        res
+          .writeHead(400, { 'Content-Type': 'text/html' })
+          .end(page('This sign-in link is not valid.'))
+        return
+      }
+      res
+        .writeHead(200, { 'Content-Type': 'text/html', 'Cache-Control': 'no-store' })
+        .end(page('Signed in. You can close this tab and return to FlowPT.'))
+      finish(() => resolve(url.searchParams))
+    })
+    const timer = setTimeout(
+      () => finish(() => reject(new Error('Browser sign-in timed out. Try again.'))),
+      HANDOFF_TIMEOUT_MS
+    )
+    const finish = (settle: () => void): void => {
+      clearTimeout(timer)
+      if (handoff?.server === server) handoff = null
+      server.close()
+      server.closeAllConnections()
+      settle()
+    }
+    handoff = { server, fail: (e) => finish(() => reject(e)) }
+    server.on('error', (e) => finish(() => reject(e)))
+    server.listen(0, '127.0.0.1', () => {
+      const addr = server.address()
+      if (!addr || typeof addr === 'string') return finish(() => reject(new Error('No port')))
+      const hash = new URLSearchParams({ port: String(addr.port), state, pk: keys.publicKey })
+      void shell.openExternal(`${WEB_URL}/?desktop-auth#${hash.toString()}`)
+    })
+  })
+
+  let tokens: { access_token?: string; refresh_token?: string }
+  try {
+    tokens = JSON.parse(
+      await openFromBrowser(keys.privateKey, state, {
+        epk: params.get('epk') ?? '',
+        iv: params.get('iv') ?? '',
+        ct: params.get('ct') ?? ''
+      })
+    )
+  } catch {
+    throw new Error('Could not read the browser sign-in. Try again.')
+  }
+  if (!tokens.access_token || !tokens.refresh_token)
+    throw new Error('Browser sign-in was incomplete')
+  const { error } = await c.auth.setSession({
+    access_token: tokens.access_token,
+    refresh_token: tokens.refresh_token
+  })
+  if (error) throw new Error(error.message)
+  const { state: next } = await computeState()
+  if (next === 'ready') await finalize()
+  BrowserWindow.getAllWindows()[0]?.show()
+  BrowserWindow.getAllWindows()[0]?.focus()
+  return next
 }
 
 export async function signOut(): Promise<void> {
