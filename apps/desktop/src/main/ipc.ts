@@ -23,6 +23,7 @@ import { getDashboard } from './dashboard'
 import { exportBackup, restoreFromFile } from './backup'
 import {
   configure,
+  cancelBrowserSignIn,
   confirmMfa,
   enrollMfa,
   isSignedIn,
@@ -32,6 +33,7 @@ import {
   status as syncStatus,
   syncNow,
   syncSoon,
+  signInWithBrowser,
   verifyMfa
 } from './sync/runtime'
 
@@ -105,6 +107,8 @@ export function registerIpc(): void {
   ipcMain.handle('sync:confirmMfa', async (_e, id: string, code: string) => ({
     state: await confirmMfa(id, code)
   }))
+  ipcMain.handle('sync:signInWithBrowser', async () => ({ state: await signInWithBrowser() }))
+  ipcMain.handle('sync:cancelBrowserSignIn', () => cancelBrowserSignIn())
   ipcMain.handle('sync:signOut', () => signOut())
   guarded('sync:syncNow', () => syncNow())
 }

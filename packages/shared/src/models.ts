@@ -360,6 +360,9 @@ export interface PasskeyApi {
 
 export interface SyncApi {
   passkeys?: PasskeyApi
+  // Desktop only: passkey sign-in through the system browser (the browser holds the passkey).
+  signInWithBrowser?(): Promise<{ state: SyncState }>
+  cancelBrowserSignIn?(): Promise<void>
   status(): Promise<SyncStatus>
   configure(url: string, anonKey: string): Promise<void>
   signUp(email: string, password: string, name: string): Promise<{ needsConfirmation: boolean }>

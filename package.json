@@ -12,7 +12,8 @@
     "dev:web": "npm run dev -w @flowpt/web",
     "build:web": "npm run build -w @flowpt/web",
     "typecheck": "npm run typecheck -w @flowpt/ui -w @flowpt/web -w @flowpt/desktop",
-    "lint": "npm run lint -w @flowpt/ui -w @flowpt/web"
+    "lint": "npm run lint -w @flowpt/ui -w @flowpt/web",
+    "test:shared": "node --experimental-strip-types --no-warnings packages/shared/tests/handoff.test.mts"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.10"
