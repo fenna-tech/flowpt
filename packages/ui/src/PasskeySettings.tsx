@@ -28,8 +28,8 @@ export function PasskeySettings(): React.JSX.Element | null {
     <div className="space-y-2 border-t border-line pt-3">
       <h3 className="text-sm font-medium">Passkeys</h3>
       <p className="text-xs text-slate-500">
-        Sign in with your fingerprint, face or a security key instead of typing a password. You will
-        still be asked for your authenticator code.
+        Sign in with your fingerprint, face or a security key instead of a password and
+        authenticator code. A passkey sign-in counts as both.
       </p>
       <ul className="space-y-1 text-sm">
         {passkeys.map((p) => (

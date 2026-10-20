@@ -18,6 +18,12 @@ async function computeState(): Promise<{ state: SyncState; email: string | null 
   const email = data.session.user.email ?? null
   const aal = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
   if (aal.data?.currentLevel === 'aal2') return { state: 'ready', email }
+  // A passkey sign-in is the second factor too; the database accepts it (migration
+  // 20261020000100_passkey_satisfies_mfa.sql), so do not ask for an authenticator code.
+  const methods = (aal.data?.currentAuthenticationMethods ?? []) as ({ method?: string } | string)[]
+  if (methods.some((m) => (typeof m === 'string' ? m : m.method) === 'passkey')) {
+    return { state: 'ready', email }
+  }
   return { state: aal.data?.nextLevel === 'aal2' ? 'mfa-needed' : 'mfa-enroll', email }
 }
 

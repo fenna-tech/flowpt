@@ -17,7 +17,7 @@ await db.exec(`
   create function auth.uid() returns uuid language sql stable as
     $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
   create function auth.jwt() returns jsonb language sql stable as
-    $$ select jsonb_build_object('sub', current_setting('request.jwt.claim.sub', true), 'aal', nullif(current_setting('request.jwt.claim.aal', true), '')) $$;
+    $$ select jsonb_build_object('sub', current_setting('request.jwt.claim.sub', true), 'aal', nullif(current_setting('request.jwt.claim.aal', true), ''), 'amr', coalesce(nullif(current_setting('request.jwt.claim.amr', true), '')::jsonb, '[]'::jsonb)) $$;
   create role authenticated nologin; create role anon nologin;
   grant usage on schema public, auth to authenticated, anon;
   grant execute on function auth.uid() to authenticated, anon;
@@ -27,8 +27,8 @@ for (const f of readdirSync(migrations).sort()) await db.exec(readFileSync(join(
 await db.exec(`grant select, insert, update on all tables in schema public to authenticated;`)
 
 let pass = 0, fail = 0
-const as = async (user, aal = 'aal2') => {
-  await db.exec(`reset role; set request.jwt.claim.sub = '${user}'; set request.jwt.claim.aal = '${aal}'; set role authenticated;`)
+const as = async (user, aal = 'aal2', amr = '[]') => {
+  await db.exec(`reset role; set request.jwt.claim.sub = '${user}'; set request.jwt.claim.aal = '${aal}'; set request.jwt.claim.amr = '${amr}'; set role authenticated;`)
 }
 const q = async (sql, params) => (await db.query(sql, params)).rows
 const ok = async (name, fn) => {
@@ -128,6 +128,11 @@ await ok('cannot insert lease rows directly', async () => {
 await ok('password-only (aal1) session sees nothing', async () => { await as(A, 'aal1'); return (await q(`select * from patients`)).length === 0 })
 await rejects('aal1 session cannot insert', () => q(`insert into patients (id, first_name, last_name, created_at, updated_at) values (gen_random_uuid(),'x','y',now(),now())`), /row-level security/)
 await rejects('aal1 session cannot lease numbers', () => q(`select * from lease_invoice_numbers($1, 5)`, [dev1.id]), /MFA required/)
+const PASSKEY = '[{"method":"passkey","timestamp":1}]', PASSWORD = '[{"method":"password","timestamp":1}]'
+await ok('password-only amr at aal1 sees nothing', async () => { await as(A, 'aal1', PASSWORD); return (await q(`select * from patients`)).length === 0 })
+await ok('passkey sign-in (aal1, amr passkey) counts as MFA', async () => { await as(A, 'aal1', PASSKEY); return (await q(`select * from patients`)).length === 1 })
+await ok('passkey session can write', async () => { await q(`update patients set phone='1' where id='${P1}'`); return (await q(`select phone from patients`))[0].phone === '1' })
+await ok('passkey session can lease numbers', async () => (await q(`select * from lease_invoice_numbers($1, 1)`, [dev1.id])).length === 1)
 await as(A)
 await ok('lease honors the floor', async () => (await q(`select * from lease_invoice_numbers($1, 5, 500)`, [dev1.id]))[0].start_no === 500)
 await ok('floor below existing blocks is ignored', async () => (await q(`select * from lease_invoice_numbers($1, 5, 3)`, [dev1.id]))[0].start_no === 505)

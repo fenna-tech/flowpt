@@ -51,20 +51,23 @@ reuse it. Instead the UI is shared and only the backend differs:
 
 ## Passkeys (web only)
 
-Supabase's native passkeys (Authentication > Passkeys in the dashboard, with Relying Party ID
-`flowpt.fenna.tech`) are used as a **sign-in method that replaces the password**. They do not replace
-MFA: after a passkey sign-in the authenticator-app code is still required, because the RLS policies
-need an aal2 session and a passkey sign-in is treated as aal1 until verified otherwise.
-(An earlier attempt used the WebAuthn *MFA factor*; Supabase no longer offers it in the dashboard.)
+Supabase's native passkeys (Authentication > Passkeys in the dashboard, Relying Party ID
+`flowpt.fenna.tech`) are a sign-in method that **counts as both the password and the second factor**.
 
-- Add one in **Settings > Account > Passkeys** (needs a signed-in session). Sign in later with
-  **Sign in with a passkey** on the first screen, then enter your authenticator code.
-- The desktop cannot do WebAuthn (Electron origin), so it keeps email + password + authenticator.
-- Passkeys are bound to the Relying Party ID, so they only work on `https://flowpt.fenna.tech`, not
-  on `localhost`. Treat that hostname as permanent.
-- Open question: whether a passkey sign-in could count as the MFA step. That needs a deliberate
-  change to the RLS policies and a look at the passkey session's token (`aal`/`amr`). Not done.
-- Not exercised against a live project or a real authenticator.
+- Add one in **Settings > Account > Passkeys** (needs a signed-in session). Then use
+  **Sign in with a passkey** on the first screen: no password, no authenticator code.
+- Server side: a passkey session has `aal1` with `amr = [{"method":"passkey"}]`. Migration
+  `20261020000100_passkey_satisfies_mfa.sql` makes the restrictive RLS policies and
+  `lease_invoice_numbers` accept `aal2` **or** a passkey `amr` (`public.mfa_satisfied()`). A
+  password-only session is still refused. **Apply the migration before deploying this web build**,
+  otherwise a passkey sign-in gets in but every query is rejected. It is covered by
+  `npm run test:supabase`.
+- Trade-offs: an account that adds a passkey can bypass the authenticator app on the web, so protect
+  the passkey (device lock, no shared computers). The authenticator app is still required for
+  password sign-in and for the desktop, which cannot do WebAuthn (Electron origin).
+- Passkeys only work on `https://flowpt.fenna.tech` (the Relying Party ID), not on `localhost`.
+  Treat that hostname as permanent.
+- Not tested end to end after this change.
 
 ## Decisions and open questions
 
