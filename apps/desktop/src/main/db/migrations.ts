@@ -125,7 +125,54 @@ const MIGRATIONS: string[] = [
     NEW.template_id IS NOT OLD.template_id OR NEW.patient_id IS NOT OLD.patient_id OR
     NEW.signed_at IS NOT OLD.signed_at OR NEW.signed_by IS NOT OLD.signed_by OR
     NEW.deleted_at IS NOT OLD.deleted_at)
-  BEGIN SELECT RAISE(ABORT, 'Signed notes cannot be modified or deleted'); END;`
+  BEGIN SELECT RAISE(ABORT, 'Signed notes cannot be modified or deleted'); END;`,
+  // Cloud sync: dirty flags (rows to upload), audit uids, billing_profiles.updated_at.
+  // sync_flags.applying = 1 while pulled rows are written, so they are not re-marked dirty.
+  `CREATE TABLE sync_flags (applying INTEGER NOT NULL);
+  INSERT INTO sync_flags VALUES (0);
+
+  ALTER TABLE patients ADD COLUMN dirty INTEGER NOT NULL DEFAULT 1;
+  ALTER TABLE chart_notes ADD COLUMN dirty INTEGER NOT NULL DEFAULT 1;
+  ALTER TABLE note_addenda ADD COLUMN dirty INTEGER NOT NULL DEFAULT 1;
+  ALTER TABLE billing_profiles ADD COLUMN dirty INTEGER NOT NULL DEFAULT 1;
+  ALTER TABLE invoices ADD COLUMN dirty INTEGER NOT NULL DEFAULT 1;
+  ALTER TABLE audit_log ADD COLUMN dirty INTEGER NOT NULL DEFAULT 1;
+  ALTER TABLE billing_profiles ADD COLUMN updated_at TEXT;
+  UPDATE billing_profiles SET updated_at = created_at;
+
+  CREATE TRIGGER patients_dirty AFTER UPDATE ON patients
+  WHEN (SELECT applying FROM sync_flags) = 0
+  BEGIN UPDATE patients SET dirty = 1 WHERE id = NEW.id; END;
+
+  CREATE TRIGGER chart_notes_dirty AFTER UPDATE ON chart_notes
+  WHEN (SELECT applying FROM sync_flags) = 0
+  BEGIN UPDATE chart_notes SET dirty = 1 WHERE id = NEW.id; END;
+
+  CREATE TRIGGER billing_profiles_dirty AFTER UPDATE ON billing_profiles
+  WHEN (SELECT applying FROM sync_flags) = 0
+  BEGIN UPDATE billing_profiles SET dirty = 1 WHERE id = NEW.id; END;
+
+  CREATE TRIGGER invoices_dirty AFTER UPDATE ON invoices
+  WHEN (SELECT applying FROM sync_flags) = 0
+  BEGIN UPDATE invoices SET dirty = 1 WHERE id = NEW.id; END;
+
+  -- Insert-only tables stay append-only, but the sync worker may flip dirty.
+  DROP TRIGGER addenda_no_update;
+  CREATE TRIGGER addenda_no_update BEFORE UPDATE ON note_addenda
+  WHEN NEW.id IS NOT OLD.id OR NEW.note_id IS NOT OLD.note_id OR NEW.text IS NOT OLD.text OR
+       NEW.author IS NOT OLD.author OR NEW.created_at IS NOT OLD.created_at
+  BEGIN SELECT RAISE(ABORT, 'Addenda are append-only'); END;
+
+  DROP TRIGGER audit_no_update;
+  ALTER TABLE audit_log ADD COLUMN uid TEXT;
+  UPDATE audit_log SET uid = lower(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' || substr(hex(randomblob(2)), 2) || '-' || substr('89ab', 1 + (abs(random()) % 4), 1) || substr(hex(randomblob(2)), 2) || '-' || hex(randomblob(6)));
+  CREATE UNIQUE INDEX idx_audit_uid ON audit_log(uid);
+  CREATE TRIGGER audit_no_update BEFORE UPDATE ON audit_log
+  WHEN NEW.id IS NOT OLD.id OR NEW.uid IS NOT OLD.uid OR NEW.ts IS NOT OLD.ts OR
+       NEW.action IS NOT OLD.action OR NEW.entity IS NOT OLD.entity OR
+       NEW.entity_id IS NOT OLD.entity_id OR NEW.patient_id IS NOT OLD.patient_id OR
+       NEW.actor IS NOT OLD.actor OR NEW.detail IS NOT OLD.detail
+  BEGIN SELECT RAISE(ABORT, 'Audit log is append-only'); END;`
 ]
 
 export function migrate(db: Database.Database): void {

@@ -5,6 +5,7 @@ import { AuditPanel } from './AuditPanel'
 import { InvoicesPanel } from './InvoicesPanel'
 import { SettingsPanel } from './SettingsPanel'
 import { Dashboard } from './Dashboard'
+import { SyncBadge } from './SyncPanel'
 import { LockScreen } from './LockScreen'
 import { useActivityPings, useLockStatus } from './lockHooks'
 
@@ -126,6 +127,7 @@ function Workspace(): React.JSX.Element {
             <li className="px-3 py-4 text-sm text-slate-500">No patients yet.</li>
           )}
         </ul>
+        <SyncBadge />
         <button
           onClick={() => setView('dashboard')}
           className="border-t border-slate-200 px-3 py-2 text-left text-sm text-slate-600 hover:bg-slate-100"

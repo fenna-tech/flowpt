@@ -6,7 +6,8 @@ import type {
   LockApi,
   NoteApi,
   PatientApi,
-  SettingsApi
+  SettingsApi,
+  SyncApi
 } from '@flowpt/shared'
 
 declare global {
@@ -20,6 +21,7 @@ declare global {
       lock: LockApi
       dashboard: DashboardApi
       backup: BackupApi
+      sync: SyncApi
     }
   }
 }

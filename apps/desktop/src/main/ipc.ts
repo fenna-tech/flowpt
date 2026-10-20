@@ -28,6 +28,18 @@ import { exportInvoicePdf } from './pdf'
 import { getDashboard } from './dashboard'
 import { exportBackup, restoreFromFile } from './backup'
 import {
+  configure,
+  confirmMfa,
+  enrollMfa,
+  signIn,
+  signOut,
+  signUp,
+  status as syncStatus,
+  syncNow,
+  syncSoon,
+  verifyMfa
+} from './sync/runtime'
+import {
   changePin,
   getTimeout,
   isUnlocked,
@@ -43,11 +55,16 @@ import {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Handler = (...args: any[]) => unknown
 
+const MUTATING =
+  /:(create|update|remove|sign|addAddendum|issue|markPaid|void|saveProfile|removeProfile|savePractitioner)$/
+
 function guarded(channel: string, fn: Handler): void {
   ipcMain.handle(channel, (_e, ...args) => {
     if (!isUnlocked()) throw new Error('App is locked')
     touch()
-    return fn(...args)
+    const result = fn(...args)
+    if (MUTATING.test(channel)) syncSoon() // debounced upload after local changes
+    return result
   })
 }
 
@@ -94,10 +111,26 @@ export function registerIpc(): void {
   guarded('backup:export', (pin: string, passphrase: string) => exportBackup(pin, passphrase))
   guarded('backup:restore', (pin: string, passphrase: string) => restoreFromFile(pin, passphrase))
 
+  guarded('sync:status', () => syncStatus())
+  guarded('sync:configure', (url: string, key: string) => configure(url, key))
+  guarded('sync:signUp', (email: string, pw: string) => signUp(email, pw))
+  guarded('sync:signIn', async (email: string, pw: string) => ({ state: await signIn(email, pw) }))
+  guarded('sync:verifyMfa', async (code: string) => ({ state: await verifyMfa(code) }))
+  guarded('sync:enrollMfa', () => enrollMfa())
+  guarded('sync:confirmMfa', async (id: string, code: string) => ({
+    state: await confirmMfa(id, code)
+  }))
+  guarded('sync:signOut', () => signOut())
+  guarded('sync:syncNow', () => syncNow())
+
   // Lock channels. Only status/setup/unlock work while locked.
   ipcMain.handle('lock:status', () => status())
   ipcMain.handle('lock:setup', (_e, name: string, pin: string) => setup(name, pin))
-  ipcMain.handle('lock:unlock', (_e, pin: string) => unlock(pin))
+  ipcMain.handle('lock:unlock', (_e, pin: string) => {
+    const res = unlock(pin)
+    if (res.ok) syncSoon(1000)
+    return res
+  })
   guarded('lock:lock', () => lockNow('manual'))
   guarded('lock:getTimeout', () => getTimeout())
   guarded('lock:setTimeout', (minutes: number) => setTimeoutMinutes(minutes))

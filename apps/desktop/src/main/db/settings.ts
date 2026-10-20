@@ -55,6 +55,8 @@ export function savePractitioner(p: PractitionerProfile): PractitionerProfile {
     email: str(p?.email, 200)
   }
   setSetting('practitioner', JSON.stringify(clean))
+  setSetting('practitioner_updated_at', new Date().toISOString())
+  setSetting('practitioner_dirty', '1')
   return clean
 }
 
@@ -95,23 +97,24 @@ export function saveProfile(input: BillingProfileInput): BillingProfile {
   const db = getDb()
   if (input.id) {
     const res = db
-      .prepare('UPDATE billing_profiles SET definition = ? WHERE id = ? AND deleted_at IS NULL')
-      .run(JSON.stringify(def), input.id)
+      .prepare(
+        'UPDATE billing_profiles SET definition = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL'
+      )
+      .run(JSON.stringify(def), new Date().toISOString(), input.id)
     if (res.changes === 0) throw new Error('Profile not found')
     return { ...def, id: input.id, builtin: false }
   }
   const id = randomUUID()
-  db.prepare('INSERT INTO billing_profiles (id, definition, created_at) VALUES (?, ?, ?)').run(
-    id,
-    JSON.stringify(def),
-    new Date().toISOString()
-  )
+  const now = new Date().toISOString()
+  db.prepare(
+    'INSERT INTO billing_profiles (id, definition, created_at, updated_at) VALUES (?, ?, ?, ?)'
+  ).run(id, JSON.stringify(def), now, now)
   return { ...def, id, builtin: false }
 }
 
 export function removeProfile(id: string): void {
   if (id === PRIVATE_PROFILE.id) throw new Error('The built-in profile cannot be removed')
   getDb()
-    .prepare('UPDATE billing_profiles SET deleted_at = ? WHERE id = ?')
-    .run(new Date().toISOString(), id)
+    .prepare('UPDATE billing_profiles SET deleted_at = ?, updated_at = ? WHERE id = ?')
+    .run(new Date().toISOString(), new Date().toISOString(), id)
 }

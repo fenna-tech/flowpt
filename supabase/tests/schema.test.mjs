@@ -16,6 +16,8 @@ await db.exec(`
   create table auth.users (id uuid primary key);
   create function auth.uid() returns uuid language sql stable as
     $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
+  create function auth.jwt() returns jsonb language sql stable as
+    $$ select jsonb_build_object('sub', current_setting('request.jwt.claim.sub', true), 'aal', nullif(current_setting('request.jwt.claim.aal', true), '')) $$;
   create role authenticated nologin; create role anon nologin;
   grant usage on schema public, auth to authenticated, anon;
   grant execute on function auth.uid() to authenticated, anon;
@@ -25,8 +27,8 @@ for (const f of readdirSync(migrations).sort()) await db.exec(readFileSync(join(
 await db.exec(`grant select, insert, update on all tables in schema public to authenticated;`)
 
 let pass = 0, fail = 0
-const as = async (user) => {
-  await db.exec(`reset role; set request.jwt.claim.sub = '${user}'; set role authenticated;`)
+const as = async (user, aal = 'aal2') => {
+  await db.exec(`reset role; set request.jwt.claim.sub = '${user}'; set request.jwt.claim.aal = '${aal}'; set role authenticated;`)
 }
 const q = async (sql, params) => (await db.query(sql, params)).rows
 const ok = async (name, fn) => {
@@ -121,6 +123,14 @@ await rejects('block size capped', async () => { await as(A); await q(`select * 
 await ok('cannot insert lease rows directly', async () => {
   try { await q(`insert into invoice_number_blocks (device_id, start_no, end_no) values ($1, 999, 1000)`, [dev1.id]); return false } catch { return true }
 })
+
+// MFA enforcement
+await ok('password-only (aal1) session sees nothing', async () => { await as(A, 'aal1'); return (await q(`select * from patients`)).length === 0 })
+await rejects('aal1 session cannot insert', () => q(`insert into patients (id, first_name, last_name, created_at, updated_at) values (gen_random_uuid(),'x','y',now(),now())`), /row-level security/)
+await rejects('aal1 session cannot lease numbers', () => q(`select * from lease_invoice_numbers($1, 5)`, [dev1.id]), /MFA required/)
+await as(A)
+await ok('lease honors the floor', async () => (await q(`select * from lease_invoice_numbers($1, 5, 500)`, [dev1.id]))[0].start_no === 500)
+await ok('floor below existing blocks is ignored', async () => (await q(`select * from lease_invoice_numbers($1, 5, 3)`, [dev1.id]))[0].start_no === 505)
 
 // pull by cursor
 await ok('pull by server_ts cursor', async () => {

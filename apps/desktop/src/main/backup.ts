@@ -1,5 +1,5 @@
 import { BrowserWindow, dialog } from 'electron'
-import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'crypto'
+import { createCipheriv, createDecipheriv, randomBytes, randomUUID, scryptSync } from 'crypto'
 import { readFile, writeFile } from 'fs/promises'
 import { gunzipSync, gzipSync } from 'zlib'
 import type { BackupResult } from '@flowpt/shared'
@@ -118,12 +118,17 @@ export function restoreBackup(file: Buffer, passphrase: string): Record<string, 
       const cols = new Set((db.pragma(`table_info(${t})`) as { name: string }[]).map((c) => c.name))
       for (const row of payload.tables[t] ?? []) {
         // Column names come from the DB schema, never from the file, so they cannot inject SQL.
-        const keys = Object.keys(row).filter(
-          (k) => cols.has(k) && !(t === 'audit_log' && k === 'id')
+        // Backups from older versions may lack columns that sync needs; fill them in.
+        const data: Record<string, unknown> = { ...row }
+        if (t === 'audit_log' && !data.uid) data.uid = randomUUID()
+        if (t === 'billing_profiles' && !data.updated_at) data.updated_at = data.created_at
+        // `dirty` is never restored: everything restored must upload on the next sync.
+        const keys = Object.keys(data).filter(
+          (k) => cols.has(k) && k !== 'dirty' && !(t === 'audit_log' && k === 'id')
         )
         db.prepare(
           `INSERT INTO ${t} (${keys.join(',')}) VALUES (${keys.map(() => '?').join(',')})`
-        ).run(...keys.map((k) => row[k] as string | number | null))
+        ).run(...keys.map((k) => data[k] as string | number | null))
       }
       counts[t] = (payload.tables[t] ?? []).length
     }
@@ -133,6 +138,14 @@ export function restoreBackup(file: Buffer, passphrase: string): Record<string, 
           'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value'
         ).run(k, payload.settings[k])
       }
+    }
+    if (payload.settings?.practitioner) {
+      db.prepare(
+        'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value'
+      ).run('practitioner_updated_at', new Date().toISOString())
+      db.prepare(
+        'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value'
+      ).run('practitioner_dirty', '1')
     }
     logAudit('backup.restore', 'app', 'app', null, `from ${payload.exportedAt}`)
   })()

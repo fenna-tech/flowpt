@@ -8,7 +8,8 @@ import type {
   LockStatus,
   NoteApi,
   PatientApi,
-  SettingsApi
+  SettingsApi,
+  SyncApi
 } from '@flowpt/shared'
 
 const patients: PatientApi = {
@@ -71,6 +72,18 @@ const backup: BackupApi = {
   restoreFrom: (pin, passphrase) => ipcRenderer.invoke('backup:restore', pin, passphrase)
 }
 
+const sync: SyncApi = {
+  status: () => ipcRenderer.invoke('sync:status'),
+  configure: (url, key) => ipcRenderer.invoke('sync:configure', url, key),
+  signUp: (email, pw) => ipcRenderer.invoke('sync:signUp', email, pw),
+  signIn: (email, pw) => ipcRenderer.invoke('sync:signIn', email, pw),
+  verifyMfa: (code) => ipcRenderer.invoke('sync:verifyMfa', code),
+  enrollMfa: () => ipcRenderer.invoke('sync:enrollMfa'),
+  confirmMfa: (id, code) => ipcRenderer.invoke('sync:confirmMfa', id, code),
+  signOut: () => ipcRenderer.invoke('sync:signOut'),
+  syncNow: () => ipcRenderer.invoke('sync:syncNow')
+}
+
 const audit: AuditApi = {
   list: (patientId) => ipcRenderer.invoke('audit:list', patientId)
 }
@@ -83,5 +96,6 @@ contextBridge.exposeInMainWorld('api', {
   settings,
   lock,
   dashboard,
-  backup
+  backup,
+  sync
 })

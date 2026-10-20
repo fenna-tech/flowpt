@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto'
 import type { AuditEntry } from '@flowpt/shared'
 import { getDb } from './connection'
 import { currentActor } from './settings'
@@ -13,10 +14,19 @@ export function logAudit(
 ): void {
   getDb()
     .prepare(
-      `INSERT INTO audit_log (ts, action, entity, entity_id, patient_id, actor, detail)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO audit_log (uid, ts, action, entity, entity_id, patient_id, actor, detail)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
     )
-    .run(new Date().toISOString(), action, entity, entityId, patientId, currentActor(), detail)
+    .run(
+      randomUUID(),
+      new Date().toISOString(),
+      action,
+      entity,
+      entityId,
+      patientId,
+      currentActor(),
+      detail
+    )
 }
 
 export function listAudit(patientId: string): AuditEntry[] {

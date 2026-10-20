@@ -11,6 +11,7 @@ import { getDb } from './connection'
 import { logAudit } from './audit'
 import { getPatient } from './patients'
 import { getPractitioner, getProfile, getSetting, setSetting } from './settings'
+import { takeInvoiceNumber } from '../sync/engine'
 
 interface Row {
   id: string
@@ -176,9 +177,12 @@ export function issueInvoice(id: string): Invoice {
 
   const db = getDb()
   db.transaction(() => {
-    const next = Number(getSetting('next_invoice_no') ?? '1')
-    const number = `INV-${String(next).padStart(4, '0')}`
-    setSetting('next_invoice_no', String(next + 1))
+    let number = takeInvoiceNumber(db) // leased block once this device is linked to a cloud account
+    if (!number) {
+      const next = Number(getSetting('next_invoice_no') ?? '1')
+      number = `INV-${String(next).padStart(4, '0')}`
+      setSetting('next_invoice_no', String(next + 1))
+    }
     const snapshot = {
       practitioner,
       patient: {

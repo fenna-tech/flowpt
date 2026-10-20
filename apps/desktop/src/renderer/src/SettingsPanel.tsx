@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { SyncSettings } from './SyncPanel'
 import {
   LOCK_TIMEOUT_OPTIONS,
   type BillingProfile,
@@ -379,6 +380,7 @@ export function SettingsPanel(): React.JSX.Element {
   return (
     <div className="space-y-10">
       <SecuritySettings />
+      <SyncSettings />
       <BackupSettings />
       <PractitionerForm />
       <ProfilesManager />

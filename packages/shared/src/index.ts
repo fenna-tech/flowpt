@@ -283,3 +283,30 @@ export interface BackupApi {
   exportTo(pin: string, passphrase: string): Promise<BackupResult>
   restoreFrom(pin: string, passphrase: string): Promise<BackupResult>
 }
+
+// ---- Cloud sync ----
+
+export type SyncState = 'unconfigured' | 'signed-out' | 'mfa-needed' | 'mfa-enroll' | 'ready'
+
+export interface SyncStatus {
+  state: SyncState
+  url: string
+  email: string | null
+  syncing: boolean
+  lastSyncAt: string | null
+  lastError: string | null
+  pending: number // local changes not yet uploaded
+  conflicts: number // drafts replaced by a locked server copy since launch
+}
+
+export interface SyncApi {
+  status(): Promise<SyncStatus>
+  configure(url: string, anonKey: string): Promise<void>
+  signUp(email: string, password: string): Promise<{ needsConfirmation: boolean }>
+  signIn(email: string, password: string): Promise<{ state: SyncState }>
+  verifyMfa(code: string): Promise<{ state: SyncState }>
+  enrollMfa(): Promise<{ factorId: string; qrSvg: string; secret: string }>
+  confirmMfa(factorId: string, code: string): Promise<{ state: SyncState }>
+  signOut(): Promise<void>
+  syncNow(): Promise<SyncStatus>
+}

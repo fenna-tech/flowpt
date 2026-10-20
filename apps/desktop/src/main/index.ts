@@ -5,6 +5,7 @@ import icon from '../../resources/icon.png?asset'
 import { registerIpc } from './ipc'
 import { closeDb, getDb } from './db/connection'
 import { startLockWatchers } from './lock'
+import { startSyncLoop } from './sync/runtime'
 
 function createWindow(): void {
   // Create the browser window.
@@ -62,6 +63,7 @@ app.whenReady().then(() => {
   }
   registerIpc()
   startLockWatchers()
+  startSyncLoop()
 
   createWindow()
 
