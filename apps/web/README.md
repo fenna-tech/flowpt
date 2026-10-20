@@ -51,25 +51,19 @@ reuse it. Instead the UI is shared and only the backend differs:
 
 ## Passkeys (web only)
 
-Passkeys / security keys are an additional second factor (Supabase's WebAuthn MFA factor, which is
-still experimental), not a replacement for MFA: the aal2 requirement and the RLS policies are
-unchanged, and any verified factor satisfies them.
+Supabase's native passkeys (Authentication > Passkeys in the dashboard, with Relying Party ID
+`flowpt.fenna.tech`) are used as a **sign-in method that replaces the password**. They do not replace
+MFA: after a passkey sign-in the authenticator-app code is still required, because the RLS policies
+need an aal2 session and a passkey sign-in is treated as aal1 until verified otherwise.
+(An earlier attempt used the WebAuthn *MFA factor*; Supabase no longer offers it in the dashboard.)
 
-- Add one in **Settings > Account > Sign-in verification**, or choose "Use a passkey instead" when
-  first setting up MFA. At sign-in, "Use passkey" appears if the account has one.
-- Keep the authenticator app as well: the desktop app cannot do WebAuthn (its Electron origin cannot
-  hold credentials), so desktop sign-in still needs a TOTP factor. The UI will not let you remove
-  your last factor.
-- Passkeys are bound to the site's domain. One registered on `localhost` will not work on the
-  production hostname; register again there. Changing the domain later orphans existing passkeys.
-- **Production domain:** the site is published at `https://flowpt.fenna.tech`, so passkeys should be
-  registered there. Treat that hostname as permanent. The `[auth.mfa.web_authn]` block is now in
-  `supabase/config.toml` (local dev config).
-- **Needs enabling on the hosted project (not done):** Supabase dashboard > Authentication > MFA >
-  turn on WebAuthn enrol and verify, and set Site URL / redirect allow-list to
-  `https://flowpt.fenna.tech` (and `http://localhost:5173` for dev). I have no access to the project,
-  so these are yours to apply. Until then,
-  "Add passkey" fails with a server error and TOTP is unaffected.
+- Add one in **Settings > Account > Passkeys** (needs a signed-in session). Sign in later with
+  **Sign in with a passkey** on the first screen, then enter your authenticator code.
+- The desktop cannot do WebAuthn (Electron origin), so it keeps email + password + authenticator.
+- Passkeys are bound to the Relying Party ID, so they only work on `https://flowpt.fenna.tech`, not
+  on `localhost`. Treat that hostname as permanent.
+- Open question: whether a passkey sign-in could count as the MFA step. That needs a deliberate
+  change to the RLS policies and a look at the passkey session's token (`aal`/`amr`). Not done.
 - Not exercised against a live project or a real authenticator.
 
 ## Decisions and open questions

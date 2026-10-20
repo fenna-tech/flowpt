@@ -21,8 +21,3 @@ password_requirements = "lower_upper_letters_digits_symbols"
 [auth.mfa.totp]
 enroll_enabled = true
 verify_enabled = true
-
-# Passkeys / security keys as a second factor (used by the web app; experimental in Supabase Auth).
-[auth.mfa.web_authn]
-enroll_enabled = true
-verify_enabled = true

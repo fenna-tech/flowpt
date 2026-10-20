@@ -1,5 +1,5 @@
 import { isAuthRetryableFetchError } from '@supabase/supabase-js'
-import type { FactorApi, MfaFactorInfo, SyncApi, SyncState, SyncStatus } from '@flowpt/shared'
+import type { PasskeyApi, SyncApi, SyncState, SyncStatus } from '@flowpt/shared'
 import { deviceId, forgetDevice, isConfigured, projectUrl, supabase } from './core'
 
 // Account sign-in for the web app: email + password, then mandatory TOTP MFA (AAL2). The same flow
@@ -54,48 +54,43 @@ const stateAfter = async (): Promise<SyncState> => {
   return state
 }
 
-const factors: FactorApi = {
+// Passkeys are bound to this site's domain (the project's Relying Party ID): one registered on
+// localhost will not work on the production hostname.
+const passkeys: PasskeyApi = {
   async list() {
-    const { data, error } = await supabase.auth.mfa.listFactors()
+    const { data, error } = await supabase.auth.passkey.list()
     if (error) throw new Error(error.message)
-    return data.all
-      .filter((f) => f.status === 'verified')
-      .flatMap((f): MfaFactorInfo[] =>
-        f.factor_type === 'totp' || f.factor_type === 'webauthn'
-          ? [
-              {
-                id: f.id,
-                type: f.factor_type === 'webauthn' ? 'passkey' : 'totp',
-                name: f.friendly_name ?? ''
-              }
-            ]
-          : []
-      )
+    return (data ?? []).map((p) => ({
+      id: p.id,
+      name: p.friendly_name ?? '',
+      createdAt: p.created_at,
+      lastUsedAt: p.last_used_at ?? null
+    }))
   },
 
-  // Passkeys are bound to this site's domain: one registered on localhost will not work on the
-  // production hostname, so register again there.
-  async registerPasskey(name) {
-    const friendlyName = name.trim().slice(0, 60) || 'Passkey'
-    const { error } = await supabase.auth.mfa.webauthn.register({ friendlyName })
+  async register(name) {
+    const { data, error } = await supabase.auth.registerPasskey()
     if (error) throw new Error(error.message)
-    return { state: await stateAfter() }
+    const friendlyName = name.trim().slice(0, 120)
+    if (data && friendlyName) {
+      await supabase.auth.passkey.update({ passkeyId: data.id, friendlyName })
+    }
   },
 
-  async verifyPasskey(factorId) {
-    const { error } = await supabase.auth.mfa.webauthn.authenticate({ factorId })
+  async signIn() {
+    const { error } = await supabase.auth.signInWithPasskey()
     if (error) throw new Error(error.message)
     return { state: await stateAfter() }
   },
 
-  async remove(factorId) {
-    const { error } = await supabase.auth.mfa.unenroll({ factorId })
+  async remove(passkeyId) {
+    const { error } = await supabase.auth.passkey.delete({ passkeyId })
     if (error) throw new Error(error.message)
   }
 }
 
 export const sync: SyncApi = {
-  factors,
+  passkeys,
   status,
 
   async configure() {
