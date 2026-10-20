@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <g id="f">
+      <rect x="34" y="16" width="11" height="48" rx="5.5"/>
+      <rect x="34" y="16" width="30" height="11" rx="5.5"/>
+      <rect x="34" y="35" width="21" height="11" rx="5.5"/>
+    </g>
+  </defs>
+  <g transform="translate(100 100) scale(10.3)">
+    <rect width="80" height="80" rx="20" fill="#0a3d34"/>
+    <g transform="skewX(-10) translate(10 0)">
+      <g fill="#1f7a68" opacity="0.5"><use href="#f" x="-14"/></g>
+      <g fill="#1f7a68" opacity="0.8"><use href="#f" x="-10"/></g>
+      <g fill="#7fc4b3" opacity="0.9"><use href="#f" x="-6"/></g>
+      <g fill="#7fc4b3"><use href="#f" x="-3"/></g>
+      <g fill="#fff"><use href="#f"/></g>
+    </g>
+  </g>
+</svg>
