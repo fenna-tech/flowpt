@@ -7,7 +7,7 @@ import {
   type PractitionerProfile
 } from '@flowpt/shared'
 
-const inputCls = 'w-full rounded border border-slate-300 px-2 py-1.5 text-sm'
+const inputCls = 'input'
 const msg = (err: unknown): string =>
   (err as Error).message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
 
@@ -51,11 +51,11 @@ function PractitionerForm(): React.JSX.Element {
 
   return (
     <form onSubmit={save} className="max-w-xl space-y-3">
-      <h2 className="text-xl font-semibold">Practitioner details</h2>
+      <h2 className="section-title">Practitioner details</h2>
       <p className="text-sm text-slate-500">Printed on your invoices.</p>
       {practitionerFields.map((f) => (
         <label key={f.key} className="block text-sm">
-          <span className="mb-1 block text-slate-600">{f.label}</span>
+          <span className="field-label">{f.label}</span>
           <input
             className={inputCls}
             value={p[f.key]}
@@ -64,9 +64,7 @@ function PractitionerForm(): React.JSX.Element {
         </label>
       ))}
       <div className="flex items-center gap-3">
-        <button className="rounded bg-blue-600 px-4 py-1.5 text-sm text-white hover:bg-blue-700">
-          Save
-        </button>
+        <button className="btn-primary">Save</button>
         <span className="text-sm text-slate-500">{status}</span>
       </div>
     </form>
@@ -103,12 +101,12 @@ function ProfilesManager(): React.JSX.Element {
 
   return (
     <div className="max-w-xl space-y-3">
-      <h2 className="text-xl font-semibold">Billing profiles</h2>
+      <h2 className="section-title">Billing profiles</h2>
       <p className="text-sm text-slate-500">
         Private pay is built in. Add a profile for each insurer or program you bill, with the fields
         it requires.
       </p>
-      <ul className="divide-y divide-slate-200 rounded border border-slate-200 bg-white">
+      <ul className="divide-y divide-line card">
         {profiles.map((p) => (
           <li key={p.id} className="flex items-center gap-2 px-3 py-2 text-sm">
             <span className="flex-1">{p.name}</span>
@@ -116,7 +114,7 @@ function ProfilesManager(): React.JSX.Element {
               <span className="text-xs text-slate-400">built in</span>
             ) : (
               <>
-                <button className="text-blue-600 hover:underline" onClick={() => setEditing(p)}>
+                <button className="link" onClick={() => setEditing(p)}>
                   Edit
                 </button>
                 <button className="text-red-600 hover:underline" onClick={() => remove(p.id)}>
@@ -128,17 +126,14 @@ function ProfilesManager(): React.JSX.Element {
         ))}
       </ul>
       {!editing && (
-        <button
-          onClick={() => setEditing(emptyProfile)}
-          className="rounded bg-blue-600 px-4 py-1.5 text-sm text-white hover:bg-blue-700"
-        >
+        <button onClick={() => setEditing(emptyProfile)} className="btn-primary">
           + Add profile
         </button>
       )}
       {editing && (
-        <form onSubmit={save} className="space-y-3 rounded border border-slate-200 bg-white p-4">
+        <form onSubmit={save} className="space-y-3 card p-4">
           <label className="block text-sm">
-            <span className="mb-1 block text-slate-600">Profile name (e.g. Sun Life claims)</span>
+            <span className="field-label">Profile name (e.g. Sun Life claims)</span>
             <input
               className={inputCls}
               value={editing.name}
@@ -146,7 +141,7 @@ function ProfilesManager(): React.JSX.Element {
             />
           </label>
           <label className="block text-sm">
-            <span className="mb-1 block text-slate-600">
+            <span className="field-label">
               Payer label (e.g. Insurer, Program). Leave empty to bill the patient directly.
             </span>
             <input
@@ -172,7 +167,7 @@ function ProfilesManager(): React.JSX.Element {
             Require a service code on every line
           </label>
           <label className="block text-sm">
-            <span className="mb-1 block text-slate-600">Default tax %</span>
+            <span className="field-label">Default tax %</span>
             <input
               className={inputCls}
               inputMode="decimal"
@@ -183,9 +178,7 @@ function ProfilesManager(): React.JSX.Element {
             />
           </label>
           <label className="block text-sm">
-            <span className="mb-1 block text-slate-600">
-              Footer text (payment terms, claim instructions)
-            </span>
+            <span className="field-label">Footer text (payment terms, claim instructions)</span>
             <textarea
               className={inputCls}
               rows={3}
@@ -195,16 +188,14 @@ function ProfilesManager(): React.JSX.Element {
           </label>
           {error && <p className="text-sm text-red-600">{error}</p>}
           <div className="flex gap-2">
-            <button className="rounded bg-blue-600 px-4 py-1.5 text-sm text-white hover:bg-blue-700">
-              Save profile
-            </button>
+            <button className="btn-primary">Save profile</button>
             <button
               type="button"
               onClick={() => {
                 setEditing(null)
                 setError('')
               }}
-              className="rounded border border-slate-300 px-4 py-1.5 text-sm"
+              className="btn-secondary"
             >
               Cancel
             </button>
@@ -243,9 +234,9 @@ function SecuritySettings(): React.JSX.Element {
 
   return (
     <div className="max-w-xl space-y-3">
-      <h2 className="text-xl font-semibold">Security</h2>
+      <h2 className="section-title">Security</h2>
       <label className="block text-sm">
-        <span className="mb-1 block text-slate-600">Auto-lock after inactivity</span>
+        <span className="field-label">Auto-lock after inactivity</span>
         <select
           className={inputCls}
           value={timeout ?? ''}
@@ -274,9 +265,7 @@ function SecuritySettings(): React.JSX.Element {
           onChange={(e) => setNewPin(e.target.value)}
         />
         <div className="flex items-center gap-3">
-          <button className="rounded bg-blue-600 px-4 py-1.5 text-sm text-white hover:bg-blue-700">
-            Change PIN
-          </button>
+          <button className="btn-primary">Change PIN</button>
           <span className="text-sm text-slate-500">{status}</span>
         </div>
       </form>
@@ -328,7 +317,7 @@ function BackupSettings(): React.JSX.Element {
 
   return (
     <div className="max-w-xl space-y-3">
-      <h2 className="text-xl font-semibold">Backup &amp; restore</h2>
+      <h2 className="section-title">Backup &amp; restore</h2>
       <p className="text-sm text-slate-500">
         Backups are encrypted with a backup passphrase (separate from your PIN) and can be restored
         on any computer. Without the passphrase the file cannot be opened, and it cannot be
@@ -356,18 +345,10 @@ function BackupSettings(): React.JSX.Element {
         onChange={(e) => setConfirm(e.target.value)}
       />
       <div className="flex items-center gap-2">
-        <button
-          disabled={busy}
-          onClick={exportIt}
-          className="rounded bg-blue-600 px-4 py-1.5 text-sm text-white hover:bg-blue-700 disabled:opacity-40"
-        >
+        <button disabled={busy} onClick={exportIt} className="btn-primary">
           Export backup
         </button>
-        <button
-          disabled={busy}
-          onClick={restoreIt}
-          className="rounded border border-slate-300 px-4 py-1.5 text-sm hover:bg-slate-50 disabled:opacity-40"
-        >
+        <button disabled={busy} onClick={restoreIt} className="btn-secondary">
           Restore from file
         </button>
         <span className="text-sm text-slate-500">{status}</span>

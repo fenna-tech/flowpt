@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { BUILTIN_TEMPLATES, type ChartNote, type NoteSection } from '@flowpt/shared'
 
-const inputCls = 'w-full rounded border border-slate-300 px-2 py-1.5 text-sm'
+const inputCls = 'input'
 const today = (): string => new Date().toLocaleDateString('en-CA') // YYYY-MM-DD, local time
 const fmt = (iso: string): string => new Date(iso).toLocaleString()
 const msg = (err: unknown): string =>
@@ -56,33 +56,29 @@ function NoteEditor({
     })
 
   return (
-    <div className="space-y-3 rounded border border-slate-200 bg-white p-4">
+    <div className="space-y-3 card p-4">
       <div className="flex items-center gap-3">
-        <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-medium">
-          {template?.name ?? 'Note'}
-        </span>
+        <span className="pill-neutral">{template?.name ?? 'Note'}</span>
         <input
           type="date"
           disabled={locked}
-          className="rounded border border-slate-300 px-2 py-1 text-sm disabled:bg-slate-50"
+          className="input w-auto! py-1!"
           value={visitDate}
           onChange={(e) => setVisitDate(e.target.value)}
         />
         {locked ? (
-          <span className="ml-auto rounded bg-green-100 px-2 py-0.5 text-xs text-green-800">
+          <span className="ml-auto pill-paid">
             Signed {fmt(note.signedAt!)}
             {note.signedBy ? ` by ${note.signedBy}` : ''}
           </span>
         ) : (
-          <span className="ml-auto rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-800">
-            Draft
-          </span>
+          <span className="ml-auto pill-pending">Draft</span>
         )}
       </div>
 
       {sections.map((s, i) => (
         <label key={s.key} className="block text-sm">
-          <span className="mb-1 block font-medium text-slate-700">{s.label}</span>
+          <span className="field-label">{s.label}</span>
           <textarea
             className={`${inputCls} disabled:bg-slate-50`}
             rows={3}
@@ -97,10 +93,10 @@ function NoteEditor({
       ))}
 
       {note.addenda.length > 0 && (
-        <div className="space-y-2 border-t border-slate-200 pt-3">
+        <div className="space-y-2 border-t border-line pt-3">
           <h4 className="text-sm font-medium text-slate-700">Addenda</h4>
           {note.addenda.map((a) => (
-            <div key={a.id} className="rounded bg-slate-50 p-2 text-sm">
+            <div key={a.id} className="rounded-lg bg-canvas p-3 text-sm">
               <div className="mb-1 text-xs text-slate-500">
                 {fmt(a.createdAt)}
                 {a.author ? ` · ${a.author}` : ''}
@@ -114,7 +110,7 @@ function NoteEditor({
       {status && <p className="text-sm text-red-600">{status}</p>}
 
       {locked ? (
-        <div className="space-y-2 border-t border-slate-200 pt-3">
+        <div className="space-y-2 border-t border-line pt-3">
           <textarea
             className={inputCls}
             rows={2}
@@ -122,33 +118,19 @@ function NoteEditor({
             value={addendum}
             onChange={(e) => setAddendum(e.target.value)}
           />
-          <button
-            disabled={!addendum.trim()}
-            onClick={addAddendum}
-            className="rounded bg-slate-700 px-4 py-1.5 text-sm text-white hover:bg-slate-800 disabled:opacity-40"
-          >
+          <button disabled={!addendum.trim()} onClick={addAddendum} className="btn-dark">
             Add addendum
           </button>
         </div>
       ) : (
         <div className="flex gap-2">
-          <button
-            disabled={!dirty}
-            onClick={save}
-            className="rounded bg-blue-600 px-4 py-1.5 text-sm text-white hover:bg-blue-700 disabled:opacity-40"
-          >
+          <button disabled={!dirty} onClick={save} className="btn-primary">
             {dirty ? 'Save draft' : 'Saved'}
           </button>
-          <button
-            onClick={sign}
-            className="rounded bg-green-700 px-4 py-1.5 text-sm text-white hover:bg-green-800"
-          >
+          <button onClick={sign} className="btn-accent">
             Sign &amp; lock
           </button>
-          <button
-            onClick={remove}
-            className="rounded border border-red-300 px-4 py-1.5 text-sm text-red-600 hover:bg-red-50"
-          >
+          <button onClick={remove} className="btn-danger">
             Delete draft
           </button>
         </div>
@@ -181,7 +163,7 @@ export function NotesPanel({ patientId }: { patientId: string }): React.JSX.Elem
     <div className="max-w-2xl space-y-4">
       <div className="flex items-center gap-2">
         <select
-          className="rounded border border-slate-300 px-2 py-1.5 text-sm"
+          className="input w-auto!"
           value={templateId}
           onChange={(e) => setTemplateId(e.target.value)}
         >
@@ -191,10 +173,7 @@ export function NotesPanel({ patientId }: { patientId: string }): React.JSX.Elem
             </option>
           ))}
         </select>
-        <button
-          onClick={add}
-          className="rounded bg-blue-600 px-4 py-1.5 text-sm text-white hover:bg-blue-700"
-        >
+        <button onClick={add} className="btn-primary">
           + New note
         </button>
       </div>
