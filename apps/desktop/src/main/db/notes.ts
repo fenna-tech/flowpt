@@ -1,5 +1,13 @@
 import { randomUUID } from 'crypto'
-import { BUILTIN_TEMPLATES, type Addendum, type ChartNote, type NoteSection } from '@flowpt/shared'
+import {
+  BUILTIN_TEMPLATES,
+  cleanAddendum,
+  cleanSections,
+  cleanVisitDate,
+  type Addendum,
+  type ChartNote,
+  type NoteSection
+} from '@flowpt/shared'
 import { getDb } from './connection'
 import { logAudit } from './audit'
 import { currentActor } from './settings'
@@ -36,23 +44,6 @@ const toNote = (r: Row, addenda: Addendum[]): ChartNote => ({
   createdAt: r.created_at,
   updatedAt: r.updated_at
 })
-
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
-
-// IPC input is untrusted: validate and normalize here.
-function cleanSections(sections: unknown): NoteSection[] {
-  if (!Array.isArray(sections) || sections.length > 50) throw new Error('Invalid note sections')
-  return sections.map((s) => ({
-    key: String(s?.key ?? '').slice(0, 50),
-    label: String(s?.label ?? '').slice(0, 100),
-    text: String(s?.text ?? '').slice(0, 50000)
-  }))
-}
-
-function cleanDate(d: unknown): string {
-  if (typeof d !== 'string' || !DATE_RE.test(d)) throw new Error('Invalid visit date')
-  return d
-}
 
 function addendaFor(noteId: string): Addendum[] {
   return (
@@ -95,7 +86,7 @@ export function listNotes(patientId: string): ChartNote[] {
 export function createNote(patientId: string, templateId: string, visitDate: string): ChartNote {
   const template = BUILTIN_TEMPLATES.find((t) => t.id === templateId)
   if (!template) throw new Error('Unknown template')
-  const date = cleanDate(visitDate)
+  const date = cleanVisitDate(visitDate)
   const db = getDb()
   const exists = db
     .prepare('SELECT 1 FROM patients WHERE id = ? AND deleted_at IS NULL')
@@ -118,7 +109,7 @@ export function createNote(patientId: string, templateId: string, visitDate: str
 export function updateNote(id: string, visitDate: string, sections: NoteSection[]): ChartNote {
   const row = getRow(id)
   if (row.signed_at) throw new Error('Signed notes cannot be edited. Add an addendum instead.')
-  const date = cleanDate(visitDate)
+  const date = cleanVisitDate(visitDate)
   const clean = cleanSections(sections)
   const db = getDb()
   db.transaction(() => {
@@ -149,8 +140,7 @@ export function signNote(id: string): ChartNote {
 export function addAddendum(id: string, text: string): ChartNote {
   const row = getRow(id)
   if (!row.signed_at) throw new Error('Addenda can only be added to signed notes')
-  const body = typeof text === 'string' ? text.trim().slice(0, 50000) : ''
-  if (!body) throw new Error('Addendum text is required')
+  const body = cleanAddendum(text)
   const addendumId = randomUUID()
   const db = getDb()
   db.transaction(() => {

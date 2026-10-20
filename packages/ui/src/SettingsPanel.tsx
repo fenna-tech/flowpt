@@ -191,11 +191,11 @@ function BackupSettings(): React.JSX.Element {
 
   const exportIt = (): void => {
     if (passphrase !== confirm) return setStatus('Backup passphrases do not match')
-    void run('export', () => window.api.backup.exportTo(passphrase))
+    void run('export', () => window.api.backup!.exportTo(passphrase))
   }
   const restoreIt = (): void => {
     if (!window.confirm('Restore from a backup file? Only possible on a fresh install.')) return
-    void run('restore', () => window.api.backup.restoreFrom(passphrase))
+    void run('restore', () => window.api.backup!.restoreFrom(passphrase))
   }
 
   return (
@@ -237,7 +237,7 @@ export function SettingsPanel(): React.JSX.Element {
   return (
     <div className="space-y-10">
       <SyncSettings />
-      <BackupSettings />
+      {window.api.backup && <BackupSettings />}
       <PractitionerForm />
     </div>
   )

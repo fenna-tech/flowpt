@@ -1,5 +1,11 @@
 import { randomUUID } from 'crypto'
-import type { Patient, PatientInput } from '@flowpt/shared'
+import {
+  changedPatientFields,
+  cleanPatientInput,
+  str,
+  type Patient,
+  type PatientInput
+} from '@flowpt/shared'
 import { getDb } from './connection'
 import { logAudit } from './audit'
 
@@ -35,29 +41,6 @@ const toPatient = (r: Row): Patient => ({
   updatedAt: r.updated_at
 })
 
-const str = (v: unknown, max = 2000): string =>
-  typeof v === 'string' ? v.trim().slice(0, max) : ''
-
-// IPC input is untrusted: validate and normalize here.
-function clean(input: PatientInput): PatientInput {
-  const out: PatientInput = {
-    firstName: str(input?.firstName, 100),
-    lastName: str(input?.lastName, 100),
-    dob: str(input?.dob, 10),
-    phn: str(input?.phn, 20).replace(/\D/g, ''),
-    email: str(input?.email, 200),
-    phone: str(input?.phone, 50),
-    address: str(input?.address, 500),
-    parentNames: str(input?.parentNames, 300),
-    diagnosis: str(input?.diagnosis, 1000),
-    notes: str(input?.notes, 10000)
-  }
-  if (!out.firstName || !out.lastName) throw new Error('First and last name are required')
-  if (out.dob && !/^\d{4}-\d{2}-\d{2}$/.test(out.dob)) throw new Error('Invalid date of birth')
-  if (out.phn && out.phn.length !== 10) throw new Error('BC PHN must be 10 digits')
-  return out
-}
-
 export function listPatients(search = ''): Patient[] {
   const q = `%${str(search, 100).replace(/[%_\\]/g, '\\$&')}%`
   return (
@@ -80,7 +63,7 @@ export function getPatient(id: string): Patient | null {
 }
 
 export function createPatient(input: PatientInput): Patient {
-  const p = clean(input)
+  const p = cleanPatientInput(input)
   const id = randomUUID()
   const now = new Date().toISOString()
   const db = getDb()
@@ -95,10 +78,10 @@ export function createPatient(input: PatientInput): Patient {
 }
 
 export function updatePatient(id: string, input: PatientInput): Patient {
-  const p = clean(input)
+  const p = cleanPatientInput(input)
   const before = getPatient(id)
   if (!before) throw new Error('Patient not found')
-  const changed = (Object.keys(p) as (keyof PatientInput)[]).filter((k) => p[k] !== before[k])
+  const changed = changedPatientFields(before, p)
   const db = getDb()
   db.transaction(() => {
     db.prepare(

@@ -313,7 +313,7 @@ function InvoiceEditor({
         ) : (
           <>
             <button onClick={exportPdf} className="btn-primary">
-              Export PDF
+              {window.api.platform === 'web' ? 'Print / save PDF' : 'Export PDF'}
             </button>
             {invoice.status === 'issued' && (
               <>

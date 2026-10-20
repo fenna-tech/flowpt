@@ -70,6 +70,7 @@ const audit: AuditApi = {
 }
 
 contextBridge.exposeInMainWorld('api', {
+  platform: 'desktop',
   patients,
   notes,
   audit,

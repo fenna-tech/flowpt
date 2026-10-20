@@ -1,7 +1,11 @@
 import { randomUUID } from 'crypto'
 import {
-  PAYMENT_METHODS,
+  assertIssuable,
+  buildSnapshot,
+  cleanInvoiceInput,
+  cleanPayment,
   computeTotals,
+  todayLocal,
   type Invoice,
   type InvoiceInput,
   type InvoiceStatus,
@@ -31,10 +35,6 @@ interface Row {
   created_at: string
   updated_at: string
 }
-
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
-const str = (v: unknown, max: number): string =>
-  typeof v === 'string' ? v.trim().slice(0, max) : ''
 
 const toInvoice = (r: Row): Invoice => {
   const items = JSON.parse(r.items) as LineItem[]
@@ -77,27 +77,6 @@ export function listInvoices(patientId: string): Invoice[] {
   ).map(toInvoice)
 }
 
-// IPC input is untrusted: validate and normalize here.
-function cleanItems(items: unknown): LineItem[] {
-  if (!Array.isArray(items) || items.length > 100) throw new Error('Invalid line items')
-  return items.map((i) => {
-    const quantity = Number(i?.quantity)
-    const unitCents = Number(i?.unitCents)
-    if (!Number.isFinite(quantity) || quantity <= 0 || quantity > 10000) {
-      throw new Error('Quantity must be greater than zero')
-    }
-    if (!Number.isInteger(unitCents) || unitCents < 0 || unitCents > 1_000_000_000) {
-      throw new Error('Invalid price')
-    }
-    return {
-      description: str(i?.description, 300),
-      code: str(i?.code, 30),
-      quantity,
-      unitCents
-    }
-  })
-}
-
 export function createInvoice(patientId: string, profileId: string): Invoice {
   if (!getPatient(patientId)) throw new Error('Patient not found')
   const profile = getProfile(profileId)
@@ -108,15 +87,7 @@ export function createInvoice(patientId: string, profileId: string): Invoice {
     db.prepare(
       `INSERT INTO invoices (id, patient_id, profile_id, issue_date, tax_pct, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?)`
-    ).run(
-      id,
-      patientId,
-      profile.id,
-      new Date().toLocaleDateString('en-CA'),
-      profile.defaultTaxPct,
-      now,
-      now
-    )
+    ).run(id, patientId, profile.id, todayLocal(), profile.defaultTaxPct, now, now)
     logAudit('invoice.create', 'invoice', id, patientId, profile.id)
   })()
   return getInvoice(id)
@@ -126,25 +97,20 @@ export function updateInvoice(id: string, input: InvoiceInput): Invoice {
   const row = getRow(id)
   if (row.status !== 'draft')
     throw new Error('Issued invoices cannot be edited. Void and recreate.')
-  const date = str(input?.issueDate, 10)
-  if (!DATE_RE.test(date)) throw new Error('Invalid invoice date')
-  const taxPct = Number(input?.taxPct)
-  if (!Number.isFinite(taxPct) || taxPct < 0 || taxPct > 100) throw new Error('Invalid tax rate')
-  const profile = getProfile(str(input?.profileId, 100))
-  const items = cleanItems(input?.items)
+  const c = cleanInvoiceInput(input)
   const db = getDb()
   db.transaction(() => {
     db.prepare(
       `UPDATE invoices SET profile_id=?, issue_date=?, payer_name=?, policy_number=?, items=?,
        tax_pct=?, notes=?, updated_at=? WHERE id=? AND status='draft'`
     ).run(
-      profile.id,
-      date,
-      str(input?.payerName, 150),
-      str(input?.policyNumber, 100),
-      JSON.stringify(items),
-      taxPct,
-      str(input?.notes, 2000),
+      c.profile.id,
+      c.issueDate,
+      c.payerName,
+      c.policyNumber,
+      JSON.stringify(c.items),
+      c.taxPct,
+      c.notes,
       new Date().toISOString(),
       id
     )
@@ -163,17 +129,7 @@ export function issueInvoice(id: string): Invoice {
   const patient = getPatient(row.patient_id)
   if (!patient) throw new Error('Patient not found')
 
-  if (!practitioner.name) throw new Error('Add your practitioner details in Settings first')
-  if (inv.items.length === 0) throw new Error('Add at least one line item')
-  if (inv.items.some((i) => !i.description)) throw new Error('Every line item needs a description')
-  if (profile.payerLabel && !row.payer_name) {
-    throw new Error(`${profile.payerLabel} name is required for ${profile.name}`)
-  }
-  if (profile.requirePolicyNumber && !row.policy_number)
-    throw new Error('Policy number is required')
-  if (profile.requireServiceCode && inv.items.some((i) => !i.code)) {
-    throw new Error('A service code is required on every line for this profile')
-  }
+  assertIssuable(inv, profile, practitioner)
 
   const db = getDb()
   db.transaction(() => {
@@ -183,21 +139,7 @@ export function issueInvoice(id: string): Invoice {
       number = `INV-${String(next).padStart(4, '0')}`
       setSetting('next_invoice_no', String(next + 1))
     }
-    const snapshot = {
-      practitioner,
-      patient: {
-        name: `${patient.firstName} ${patient.lastName}`,
-        dob: patient.dob,
-        phn: patient.phn,
-        address: patient.address,
-        email: patient.email
-      },
-      profile: {
-        name: profile.name,
-        payerLabel: profile.payerLabel,
-        footerNote: profile.footerNote
-      }
-    }
+    const snapshot = buildSnapshot(practitioner, patient, profile)
     db.prepare(
       `UPDATE invoices SET status='issued', number=?, snapshot=?, updated_at=? WHERE id=?`
     ).run(number, JSON.stringify(snapshot), new Date().toISOString(), id)
@@ -209,9 +151,7 @@ export function issueInvoice(id: string): Invoice {
 export function markPaid(id: string, method: string, paidDate: string): Invoice {
   const row = getRow(id)
   if (row.status !== 'issued') throw new Error('Only issued invoices can be marked paid')
-  if (!(PAYMENT_METHODS as readonly string[]).includes(method))
-    throw new Error('Invalid payment method')
-  if (!DATE_RE.test(paidDate)) throw new Error('Invalid payment date')
+  cleanPayment(method, paidDate)
   const db = getDb()
   db.transaction(() => {
     db.prepare(

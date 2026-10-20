@@ -8,7 +8,11 @@
   "scripts": {
     "dev:desktop": "npm run dev -w @flowpt/desktop",
     "build:desktop": "npm run build -w @flowpt/desktop",
-    "test:supabase": "node supabase/tests/schema.test.mjs"
+    "test:supabase": "node supabase/tests/schema.test.mjs",
+    "dev:web": "npm run dev -w @flowpt/web",
+    "build:web": "npm run build -w @flowpt/web",
+    "typecheck": "npm run typecheck -w @flowpt/ui -w @flowpt/web -w @flowpt/desktop",
+    "lint": "npm run lint -w @flowpt/ui -w @flowpt/web"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.10"
