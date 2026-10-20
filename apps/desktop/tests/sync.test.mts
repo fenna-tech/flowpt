@@ -166,6 +166,15 @@ C.db.prepare("INSERT INTO invoices (id,number,patient_id,profile_id,status,issue
 await sync(C)
 check('lease floor skips numbers already used locally', Number(kvGet(C.db, 'inv_next')) >= 501, String(kvGet(C.db, 'inv_next')))
 
+// ---- new device: name-only setup stub must not overwrite the cloud profile ----
+const D = await newDevice('D')
+kvSet(D.db, 'practitioner', JSON.stringify({ name: 'Stub' }))
+kvSet(D.db, 'practitioner_updated_at', '1970-01-01T00:00:00.000Z')
+kvSet(D.db, 'practitioner_dirty', '1')
+await sync(D)
+check('new device adopts the cloud practitioner profile', kvGet(D.db, 'practitioner') === JSON.stringify({ name: 'Dr A' }), String(kvGet(D.db, 'practitioner')))
+check('cloud profile was not overwritten by the stub', (await remoteOne("select value v from settings where key='practitioner'")).v === JSON.stringify({ name: 'Dr A' }))
+
 // ---- local-only mode keeps the legacy counter ----
 const L = new Database(':memory:'); migrate(L)
 check('local-only mode does not use leases', takeInvoiceNumber(L) === null)

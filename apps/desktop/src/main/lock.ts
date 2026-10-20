@@ -56,6 +56,9 @@ export function setup(name: string, pin: string): void {
   if (!clean) throw new Error('Your name is required')
   const secret = checkPinFormat(pin)
   savePractitioner({ ...getPractitioner(), name: clean })
+  // Backdate the profile so that, on a new device, the cloud copy (with the full business details)
+  // wins over this name-only stub, while a brand-new account still uploads it.
+  setSetting('practitioner_updated_at', '1970-01-01T00:00:00.000Z')
   setSetting('pin_hash', hashPin(secret))
   unlocked = true
   touch()
