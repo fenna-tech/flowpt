@@ -27,9 +27,17 @@ const storage = {
   }
 }
 
+// Release builds ship with the project URL and anon key (both public by design; row-level security
+// protects the data). They come from apps/desktop/.env at build time. Dev builds without them
+// fall back to values entered in Settings.
+const EMBEDDED_URL: string = import.meta.env.MAIN_VITE_SUPABASE_URL ?? ''
+const EMBEDDED_KEY: string = import.meta.env.MAIN_VITE_SUPABASE_ANON_KEY ?? ''
+const managed = Boolean(EMBEDDED_URL && EMBEDDED_KEY)
+const cloudUrl = (): string | null => (managed ? EMBEDDED_URL : getSetting('cloud_url'))
+
 function getClient(): SupabaseClient | null {
-  const url = getSetting('cloud_url')
-  const key = getSetting('cloud_anon_key')
+  const url = cloudUrl()
+  const key = managed ? EMBEDDED_KEY : getSetting('cloud_anon_key')
   if (!url || !key) return null
   if (client && clientKey === `${url}|${key}`) return client
   client = createClient(url, key, {
@@ -46,6 +54,7 @@ const need = (): SupabaseClient => {
 }
 
 export function configure(url: string, anonKey: string): void {
+  if (managed) throw new Error('This build connects to FlowPT cloud automatically')
   let parsed: URL
   try {
     parsed = new URL(url)
@@ -83,7 +92,9 @@ export async function status(): Promise<SyncStatus> {
   }
   return {
     state: s.state,
-    url: getSetting('cloud_url') ?? '',
+    managed,
+    linked: Boolean(kvGet(getDb(), 'sync_user')),
+    url: cloudUrl() ?? '',
     email: s.email,
     syncing,
     lastSyncAt,

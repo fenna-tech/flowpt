@@ -6,6 +6,8 @@ import { InvoicesPanel } from './InvoicesPanel'
 import { SettingsPanel } from './SettingsPanel'
 import { Dashboard } from './Dashboard'
 import { SyncBadge } from './SyncPanel'
+import { CloudOnboarding } from './CloudOnboarding'
+import { useSyncStatus } from './syncHooks'
 import { LockScreen } from './LockScreen'
 import { useActivityPings, useLockStatus } from './lockHooks'
 
@@ -236,13 +238,22 @@ function Workspace(): React.JSX.Element {
   )
 }
 
+// First run: a managed build requires a cloud account (and MFA) before the workspace opens.
+// After the device is linked, the workspace always opens, so offline use never depends on the network.
+function Gate(): React.JSX.Element {
+  const [sync, refresh] = useSyncStatus(2000)
+  if (!sync) return <div />
+  if (sync.managed && !sync.linked) return <CloudOnboarding status={sync} refresh={refresh} />
+  return <Workspace />
+}
+
 // The workspace is unmounted while locked, so no patient data lingers in renderer state.
 function App(): React.JSX.Element {
   const status = useLockStatus()
   useActivityPings(status === 'unlocked')
   if (status === null) return <div />
   if (status !== 'unlocked') return <LockScreen status={status} />
-  return <Workspace />
+  return <Gate />
 }
 
 export default App

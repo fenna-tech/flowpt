@@ -290,6 +290,8 @@ export type SyncState = 'unconfigured' | 'signed-out' | 'mfa-needed' | 'mfa-enro
 
 export interface SyncStatus {
   state: SyncState
+  managed: boolean // true when the cloud project is built into this app (no manual setup)
+  linked: boolean // this device has been linked to a cloud account
   url: string
   email: string | null
   syncing: boolean

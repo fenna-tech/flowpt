@@ -1,34 +1,12 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
 import type { SyncStatus } from '@flowpt/shared'
+import { ago, msg, useSyncStatus } from './syncHooks'
 
 const inputCls = 'w-full rounded border border-slate-300 px-2 py-1.5 text-sm'
 const btn =
   'rounded bg-blue-600 px-4 py-1.5 text-sm text-white hover:bg-blue-700 disabled:opacity-40'
-const msg = (err: unknown): string =>
-  (err as Error).message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
-
-function useSyncStatus(intervalMs = 5000): [SyncStatus | null, () => Promise<void>] {
-  const [status, setStatus] = useState<SyncStatus | null>(null)
-  const refresh = useCallback(async () => setStatus(await window.api.sync.status()), [])
-  useEffect(() => {
-    const load = (): void => {
-      window.api.sync.status().then(setStatus)
-    }
-    load()
-    const t = setInterval(load, intervalMs)
-    return () => clearInterval(t)
-  }, [intervalMs])
-  return [status, refresh]
-}
-
-const ago = (iso: string): string => {
-  const s = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 1000))
-  return s < 60
-    ? 'just now'
-    : s < 3600
-      ? `${Math.floor(s / 60)} min ago`
-      : `${Math.floor(s / 3600)} h ago`
-}
+const btn2 =
+  'rounded border border-slate-300 px-4 py-1.5 text-sm hover:bg-slate-50 disabled:opacity-40'
 
 // Small status line for the sidebar.
 export function SyncBadge(): React.JSX.Element | null {
@@ -47,11 +25,14 @@ export function SyncBadge(): React.JSX.Element | null {
   return <div className={`px-3 py-1 text-xs ${cls}`}>{text}</div>
 }
 
-export function SyncSettings(): React.JSX.Element {
-  const [s, refresh] = useSyncStatus()
-  const [url, setUrl] = useState('')
-  const [key, setKey] = useState('')
-  const [editConfig, setEditConfig] = useState(false)
+// Account + MFA steps, shared by first-run onboarding and Settings.
+export function SyncAuth({
+  status,
+  refresh
+}: {
+  status: SyncStatus
+  refresh: () => Promise<void>
+}): React.JSX.Element | null {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [code, setCode] = useState('')
@@ -61,12 +42,11 @@ export function SyncSettings(): React.JSX.Element {
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
 
-  const run = async (fn: () => Promise<unknown>, ok = ''): Promise<void> => {
+  const run = async (fn: () => Promise<unknown>): Promise<void> => {
     setBusy(true)
     setNote('')
     try {
       await fn()
-      setNote(ok)
     } catch (err) {
       setNote(msg(err))
     } finally {
@@ -75,49 +55,19 @@ export function SyncSettings(): React.JSX.Element {
     }
   }
 
-  if (!s) return <div />
-  const showConfig = s.state === 'unconfigured' || editConfig
+  const createAccount = (): Promise<void> =>
+    run(async () => {
+      const r = await window.api.sync.signUp(email, password)
+      if (r.needsConfirmation) {
+        setNote('Account created. Open the confirmation email we sent, then press Sign in.')
+      } else {
+        await window.api.sync.signIn(email, password)
+      }
+    })
 
   return (
-    <div className="max-w-xl space-y-3">
-      <h2 className="text-xl font-semibold">Cloud sync</h2>
-      <p className="text-sm text-slate-500">
-        Optional. Keeps your data backed up and shared across your devices. Signing in requires an
-        authenticator app (MFA). Your project must be in a Canadian region.
-      </p>
-
-      {showConfig && (
-        <form
-          className="space-y-2"
-          onSubmit={(e) => {
-            e.preventDefault()
-            void run(async () => {
-              await window.api.sync.configure(url, key)
-              setEditConfig(false)
-              setKey('')
-            }, 'Saved')
-          }}
-        >
-          <input
-            className={inputCls}
-            placeholder="Project URL (https://…supabase.co)"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-          />
-          <input
-            className={inputCls}
-            type="password"
-            placeholder="Anon (publishable) key"
-            value={key}
-            onChange={(e) => setKey(e.target.value)}
-          />
-          <button disabled={busy} className={btn}>
-            Save project
-          </button>
-        </form>
-      )}
-
-      {!showConfig && s.state === 'signed-out' && (
+    <div className="space-y-3">
+      {status.state === 'signed-out' && (
         <form
           className="space-y-2"
           onSubmit={(e) => {
@@ -129,42 +79,37 @@ export function SyncSettings(): React.JSX.Element {
             className={inputCls}
             type="email"
             placeholder="Email"
+            autoFocus
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
           <input
             className={inputCls}
             type="password"
-            placeholder="Password (12+ characters)"
+            placeholder="Account password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
           <div className="flex gap-2">
-            <button disabled={busy} className={btn}>
-              Sign in
-            </button>
             <button
               type="button"
               disabled={busy}
-              onClick={() =>
-                void run(async () => {
-                  const r = await window.api.sync.signUp(email, password)
-                  setNote(
-                    r.needsConfirmation
-                      ? 'Account created. Confirm the email we sent, then sign in.'
-                      : 'Account created. Sign in now.'
-                  )
-                })
-              }
-              className="rounded border border-slate-300 px-4 py-1.5 text-sm hover:bg-slate-50 disabled:opacity-40"
+              onClick={() => void createAccount()}
+              className={btn}
             >
               Create account
             </button>
+            <button disabled={busy} className={btn2}>
+              Sign in
+            </button>
           </div>
+          <p className="text-xs text-slate-500">
+            New here? Create account. Already have one (another device)? Sign in.
+          </p>
         </form>
       )}
 
-      {!showConfig && s.state === 'mfa-needed' && (
+      {status.state === 'mfa-needed' && (
         <form
           className="space-y-2"
           onSubmit={(e) => {
@@ -180,6 +125,7 @@ export function SyncSettings(): React.JSX.Element {
             className={inputCls}
             inputMode="numeric"
             placeholder="123456"
+            autoFocus
             value={code}
             onChange={(e) => setCode(e.target.value)}
           />
@@ -189,11 +135,13 @@ export function SyncSettings(): React.JSX.Element {
         </form>
       )}
 
-      {!showConfig && s.state === 'mfa-enroll' && (
+      {status.state === 'mfa-enroll' && (
         <div className="space-y-2">
           {!enroll ? (
             <>
-              <p className="text-sm">Set up an authenticator app (required before syncing).</p>
+              <p className="text-sm">
+                Set up an authenticator app (required to protect your account).
+              </p>
               <button
                 disabled={busy}
                 className={btn}
@@ -240,6 +188,80 @@ export function SyncSettings(): React.JSX.Element {
         </div>
       )}
 
+      {note && <p className="text-sm text-slate-600">{note}</p>}
+    </div>
+  )
+}
+
+export function SyncSettings(): React.JSX.Element {
+  const [s, refresh] = useSyncStatus()
+  const [url, setUrl] = useState('')
+  const [key, setKey] = useState('')
+  const [editConfig, setEditConfig] = useState(false)
+  const [note, setNote] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const run = async (fn: () => Promise<unknown>, ok = ''): Promise<void> => {
+    setBusy(true)
+    setNote('')
+    try {
+      await fn()
+      setNote(ok)
+    } catch (err) {
+      setNote(msg(err))
+    } finally {
+      setBusy(false)
+      await refresh()
+    }
+  }
+
+  if (!s) return <div />
+  // Managed builds ship with the cloud project built in; manual config only exists for dev builds.
+  const showConfig = !s.managed && (s.state === 'unconfigured' || editConfig)
+
+  return (
+    <div className="max-w-xl space-y-3">
+      <h2 className="text-xl font-semibold">Cloud sync</h2>
+      <p className="text-sm text-slate-500">
+        Keeps your data backed up and shared across your devices. Signing in requires an
+        authenticator app (MFA).
+      </p>
+
+      {showConfig && (
+        <form
+          className="space-y-2"
+          onSubmit={(e) => {
+            e.preventDefault()
+            void run(async () => {
+              await window.api.sync.configure(url, key)
+              setEditConfig(false)
+              setKey('')
+            }, 'Saved')
+          }}
+        >
+          <input
+            className={inputCls}
+            placeholder="Project URL (https://…supabase.co)"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+          />
+          <input
+            className={inputCls}
+            type="password"
+            placeholder="Anon (publishable) key"
+            value={key}
+            onChange={(e) => setKey(e.target.value)}
+          />
+          <button disabled={busy} className={btn}>
+            Save project
+          </button>
+        </form>
+      )}
+
+      {!showConfig && s.state !== 'ready' && s.state !== 'unconfigured' && (
+        <SyncAuth status={s} refresh={refresh} />
+      )}
+
       {!showConfig && s.state === 'ready' && (
         <div className="space-y-2 text-sm">
           <p>
@@ -265,7 +287,7 @@ export function SyncSettings(): React.JSX.Element {
             </button>
             <button
               disabled={busy}
-              className="rounded border border-slate-300 px-4 py-1.5 text-sm hover:bg-slate-50 disabled:opacity-40"
+              className={btn2}
               onClick={() => void run(() => window.api.sync.signOut())}
             >
               Sign out
@@ -274,7 +296,7 @@ export function SyncSettings(): React.JSX.Element {
         </div>
       )}
 
-      {!showConfig && s.state !== 'unconfigured' && (
+      {!s.managed && !showConfig && s.state !== 'unconfigured' && (
         <button
           className="text-xs text-blue-600 hover:underline"
           onClick={() => setEditConfig(true)}
