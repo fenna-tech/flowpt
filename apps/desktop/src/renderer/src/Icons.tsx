@@ -73,17 +73,31 @@ export const ChevronLeftIcon = (p: P): React.JSX.Element => (
 )
 
 export function LogoMark({ className = 'size-9' }: P): React.JSX.Element {
+  const f = (
+    <>
+      <rect x="34" y="16" width="11" height="48" rx="5.5" />
+      <rect x="34" y="16" width="30" height="11" rx="5.5" />
+      <rect x="34" y="35" width="21" height="11" rx="5.5" />
+    </>
+  )
   return (
-    <svg viewBox="0 0 40 40" className={className} aria-hidden="true">
-      <circle cx="20" cy="20" r="20" fill="#0a3d34" />
-      <path
-        d="M27 14.5A9 9 0 1 0 27 25.5M20 20h8"
-        fill="none"
-        stroke="#fff"
-        strokeWidth="3.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+    <svg viewBox="0 0 80 80" className={className} aria-hidden="true">
+      <rect width="80" height="80" rx="20" fill="#0a3d34" />
+      <g transform="skewX(-10) translate(10 0)">
+        <g fill="#1f7a68" opacity="0.5" transform="translate(-14 0)">
+          {f}
+        </g>
+        <g fill="#1f7a68" opacity="0.8" transform="translate(-10 0)">
+          {f}
+        </g>
+        <g fill="#7fc4b3" opacity="0.9" transform="translate(-6 0)">
+          {f}
+        </g>
+        <g fill="#7fc4b3" transform="translate(-3 0)">
+          {f}
+        </g>
+        <g fill="#fff">{f}</g>
+      </g>
     </svg>
   )
 }
