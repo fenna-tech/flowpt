@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { SyncSettings } from './SyncPanel'
 import {
-  LOCK_TIMEOUT_OPTIONS,
   type BillingProfile,
   type BillingProfileInput,
   type PractitionerProfile
@@ -206,75 +205,7 @@ function ProfilesManager(): React.JSX.Element {
   )
 }
 
-function SecuritySettings(): React.JSX.Element {
-  const [timeout, setTimeoutMin] = useState<number | null>(null)
-  const [oldPin, setOldPin] = useState('')
-  const [newPin, setNewPin] = useState('')
-  const [status, setStatus] = useState('')
-  useEffect(() => {
-    window.api.lock.getTimeout().then(setTimeoutMin)
-  }, [])
-
-  const changeTimeout = async (minutes: number): Promise<void> => {
-    await window.api.lock.setTimeout(minutes)
-    setTimeoutMin(minutes)
-  }
-
-  const changePin = async (e: React.FormEvent): Promise<void> => {
-    e.preventDefault()
-    try {
-      await window.api.lock.changePin(oldPin, newPin)
-      setOldPin('')
-      setNewPin('')
-      setStatus('PIN changed')
-    } catch (err) {
-      setStatus(msg(err))
-    }
-  }
-
-  return (
-    <div className="max-w-xl space-y-3">
-      <h2 className="section-title">Security</h2>
-      <label className="block text-sm">
-        <span className="field-label">Auto-lock after inactivity</span>
-        <select
-          className={inputCls}
-          value={timeout ?? ''}
-          onChange={(e) => changeTimeout(Number(e.target.value))}
-        >
-          {LOCK_TIMEOUT_OPTIONS.map((m) => (
-            <option key={m} value={m}>
-              {m} minute{m === 1 ? '' : 's'}
-            </option>
-          ))}
-        </select>
-      </label>
-      <form onSubmit={changePin} className="space-y-2">
-        <input
-          className={inputCls}
-          type="password"
-          placeholder="Current PIN"
-          value={oldPin}
-          onChange={(e) => setOldPin(e.target.value)}
-        />
-        <input
-          className={inputCls}
-          type="password"
-          placeholder="New PIN (6+ characters)"
-          value={newPin}
-          onChange={(e) => setNewPin(e.target.value)}
-        />
-        <div className="flex items-center gap-3">
-          <button className="btn-primary">Change PIN</button>
-          <span className="text-sm text-slate-500">{status}</span>
-        </div>
-      </form>
-    </div>
-  )
-}
-
 function BackupSettings(): React.JSX.Element {
-  const [pin, setPin] = useState('')
   const [passphrase, setPassphrase] = useState('')
   const [confirm, setConfirm] = useState('')
   const [status, setStatus] = useState('')
@@ -308,28 +239,21 @@ function BackupSettings(): React.JSX.Element {
 
   const exportIt = (): void => {
     if (passphrase !== confirm) return setStatus('Backup passphrases do not match')
-    void run('export', () => window.api.backup.exportTo(pin, passphrase))
+    void run('export', () => window.api.backup.exportTo(passphrase))
   }
   const restoreIt = (): void => {
     if (!window.confirm('Restore from a backup file? Only possible on a fresh install.')) return
-    void run('restore', () => window.api.backup.restoreFrom(pin, passphrase))
+    void run('restore', () => window.api.backup.restoreFrom(passphrase))
   }
 
   return (
     <div className="max-w-xl space-y-3">
       <h2 className="section-title">Backup &amp; restore</h2>
       <p className="text-sm text-slate-500">
-        Backups are encrypted with a backup passphrase (separate from your PIN) and can be restored
-        on any computer. Without the passphrase the file cannot be opened, and it cannot be
-        recovered. Restore only works on a fresh install with no patient data.
+        Backups are encrypted with a backup passphrase (separate from your account password) and can
+        be restored on any computer. Without the passphrase the file cannot be opened, and it cannot
+        be recovered. Restore only works on a fresh install with no patient data.
       </p>
-      <input
-        className={inputCls}
-        type="password"
-        placeholder="Your app PIN (to confirm)"
-        value={pin}
-        onChange={(e) => setPin(e.target.value)}
-      />
       <input
         className={inputCls}
         type="password"
@@ -360,7 +284,6 @@ function BackupSettings(): React.JSX.Element {
 export function SettingsPanel(): React.JSX.Element {
   return (
     <div className="space-y-10">
-      <SecuritySettings />
       <SyncSettings />
       <BackupSettings />
       <PractitionerForm />

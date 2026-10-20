@@ -31,6 +31,8 @@ export function SyncAuth({
   status: SyncStatus
   refresh: () => Promise<void>
 }): React.JSX.Element | null {
+  const [mode, setMode] = useState<'signin' | 'create'>('signin')
+  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [code, setCode] = useState('')
@@ -53,11 +55,16 @@ export function SyncAuth({
     }
   }
 
-  const createAccount = (): Promise<void> =>
+  const submit = (): Promise<void> =>
     run(async () => {
-      const r = await window.api.sync.signUp(email, password)
+      if (mode === 'signin') {
+        await window.api.sync.signIn(email, password)
+        return
+      }
+      const r = await window.api.sync.signUp(email, password, name)
       if (r.needsConfirmation) {
-        setNote('Account created. Open the confirmation email we sent, then press Sign in.')
+        setMode('signin')
+        setNote('Account created. Open the confirmation email we sent, then sign in.')
       } else {
         await window.api.sync.signIn(email, password)
       }
@@ -70,39 +77,48 @@ export function SyncAuth({
           className="space-y-2"
           onSubmit={(e) => {
             e.preventDefault()
-            void run(() => window.api.sync.signIn(email, password))
+            void submit()
           }}
         >
+          {mode === 'create' && (
+            <input
+              className={inputCls}
+              placeholder="Your name (shown on signed notes and the audit log)"
+              autoFocus
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+          )}
           <input
             className={inputCls}
             type="email"
             placeholder="Email"
-            autoFocus
+            autoFocus={mode === 'signin'}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
           <input
             className={inputCls}
             type="password"
-            placeholder="Account password"
+            placeholder={mode === 'create' ? 'Password (8+ characters)' : 'Password'}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
-          <div className="flex gap-2">
+          <button disabled={busy} className={`${btn} w-full`}>
+            {mode === 'create' ? 'Create account' : 'Sign in'}
+          </button>
+          <p className="text-xs text-slate-500">
+            {mode === 'create' ? 'Already have an account? ' : 'New here? '}
             <button
               type="button"
-              disabled={busy}
-              onClick={() => void createAccount()}
-              className={btn}
+              className="link"
+              onClick={() => {
+                setMode(mode === 'create' ? 'signin' : 'create')
+                setNote('')
+              }}
             >
-              Create account
+              {mode === 'create' ? 'Sign in' : 'Create account'}
             </button>
-            <button disabled={busy} className={btn2}>
-              Sign in
-            </button>
-          </div>
-          <p className="text-xs text-slate-500">
-            New here? Create account. Already have one (another device)? Sign in.
           </p>
         </form>
       )}
@@ -263,7 +279,7 @@ export function SyncSettings(): React.JSX.Element {
       {!showConfig && s.state === 'ready' && (
         <div className="space-y-2 text-sm">
           <p>
-            Signed in as <b>{s.email}</b>.{' '}
+            Signed in as <b>{s.email ?? 'your account'}</b>.{' '}
             {s.syncing
               ? 'Syncing…'
               : s.lastSyncAt

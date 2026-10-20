@@ -3,7 +3,6 @@ import type {
   BackupApi,
   DashboardApi,
   InvoiceApi,
-  LockApi,
   NoteApi,
   PatientApi,
   SettingsApi,
@@ -18,7 +17,6 @@ declare global {
       audit: AuditApi
       invoices: InvoiceApi
       settings: SettingsApi
-      lock: LockApi
       dashboard: DashboardApi
       backup: BackupApi
       sync: SyncApi

@@ -5,7 +5,6 @@ import { gunzipSync, gzipSync } from 'zlib'
 import type { BackupResult } from '@flowpt/shared'
 import { getDb } from './db/connection'
 import { logAudit } from './db/audit'
-import { confirmPin } from './lock'
 
 // File format: MAGIC | salt(16) | iv(12) | gcm tag(16) | ciphertext (gzip'd JSON).
 // The key comes from a backup passphrase (scrypt), so a backup restores on any machine; the
@@ -23,7 +22,7 @@ const TABLES = [
   'invoices',
   'audit_log'
 ] as const
-const SETTINGS_KEYS = ['practitioner', 'next_invoice_no', 'lock_timeout_min']
+const SETTINGS_KEYS = ['practitioner', 'next_invoice_no']
 
 interface Payload {
   app: 'flowpt'
@@ -154,8 +153,7 @@ export function restoreBackup(file: Buffer, passphrase: string): Record<string, 
 
 const parent = (): BrowserWindow | undefined => BrowserWindow.getFocusedWindow() ?? undefined
 
-export async function exportBackup(pin: string, passphrase: string): Promise<BackupResult> {
-  confirmPin(pin)
+export async function exportBackup(passphrase: string): Promise<BackupResult> {
   const secret = checkPassphrase(passphrase)
   const { payload, counts } = buildBackup()
   const file = encryptBackup(payload, secret)
@@ -172,8 +170,7 @@ export async function exportBackup(pin: string, passphrase: string): Promise<Bac
   return { saved: true, path: res.filePath, counts }
 }
 
-export async function restoreFromFile(pin: string, passphrase: string): Promise<BackupResult> {
-  confirmPin(pin)
+export async function restoreFromFile(passphrase: string): Promise<BackupResult> {
   const opts = {
     title: 'Choose a FlowPT backup',
     properties: ['openFile' as const],

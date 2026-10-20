@@ -4,8 +4,6 @@ import type {
   BackupApi,
   DashboardApi,
   InvoiceApi,
-  LockApi,
-  LockStatus,
   NoteApi,
   PatientApi,
   SettingsApi,
@@ -49,33 +47,17 @@ const settings: SettingsApi = {
   removeProfile: (id) => ipcRenderer.invoke('settings:removeProfile', id)
 }
 
-const lock: LockApi = {
-  status: () => ipcRenderer.invoke('lock:status'),
-  setup: (name, pin) => ipcRenderer.invoke('lock:setup', name, pin),
-  unlock: (pin) => ipcRenderer.invoke('lock:unlock', pin),
-  lock: () => ipcRenderer.invoke('lock:lock'),
-  activity: () => ipcRenderer.send('lock:activity'),
-  getTimeout: () => ipcRenderer.invoke('lock:getTimeout'),
-  setTimeout: (minutes) => ipcRenderer.invoke('lock:setTimeout', minutes),
-  changePin: (oldPin, newPin) => ipcRenderer.invoke('lock:changePin', oldPin, newPin),
-  onChange: (cb) => {
-    const handler = (_e: unknown, s: LockStatus): void => cb(s)
-    ipcRenderer.on('lock:changed', handler)
-    return () => ipcRenderer.removeListener('lock:changed', handler)
-  }
-}
-
 const dashboard: DashboardApi = { get: () => ipcRenderer.invoke('dashboard:get') }
 
 const backup: BackupApi = {
-  exportTo: (pin, passphrase) => ipcRenderer.invoke('backup:export', pin, passphrase),
-  restoreFrom: (pin, passphrase) => ipcRenderer.invoke('backup:restore', pin, passphrase)
+  exportTo: (passphrase) => ipcRenderer.invoke('backup:export', passphrase),
+  restoreFrom: (passphrase) => ipcRenderer.invoke('backup:restore', passphrase)
 }
 
 const sync: SyncApi = {
   status: () => ipcRenderer.invoke('sync:status'),
   configure: (url, key) => ipcRenderer.invoke('sync:configure', url, key),
-  signUp: (email, pw) => ipcRenderer.invoke('sync:signUp', email, pw),
+  signUp: (email, pw, name) => ipcRenderer.invoke('sync:signUp', email, pw, name),
   signIn: (email, pw) => ipcRenderer.invoke('sync:signIn', email, pw),
   verifyMfa: (code) => ipcRenderer.invoke('sync:verifyMfa', code),
   enrollMfa: () => ipcRenderer.invoke('sync:enrollMfa'),
@@ -94,7 +76,6 @@ contextBridge.exposeInMainWorld('api', {
   audit,
   invoices,
   settings,
-  lock,
   dashboard,
   backup,
   sync
