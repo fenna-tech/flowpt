@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import type { SyncStatus } from '@flowpt/shared'
 import { ago, msg, useSyncStatus } from './syncHooks'
+import { FactorSettings } from './Factors'
+import { passkeysAvailable, useFactors } from './factorHooks'
 
 const inputCls = 'input'
 const btn = 'btn-primary'
@@ -41,6 +43,9 @@ export function SyncAuth({
   )
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
+  const [factors] = useFactors()
+  const passkey = factors?.find((f) => f.type === 'passkey')
+  const hasTotp = !factors || factors.some((f) => f.type === 'totp')
 
   const run = async (fn: () => Promise<unknown>): Promise<void> => {
     setBusy(true)
@@ -123,7 +128,20 @@ export function SyncAuth({
         </form>
       )}
 
-      {status.state === 'mfa-needed' && (
+      {status.state === 'mfa-needed' && passkey && passkeysAvailable() && (
+        <div className="space-y-2">
+          <button
+            disabled={busy}
+            className={`${btn} w-full`}
+            onClick={() => void run(() => window.api.sync.factors!.verifyPasskey(passkey.id))}
+          >
+            Use passkey
+          </button>
+          {hasTotp && <p className="text-xs text-slate-500">Or use your authenticator app:</p>}
+        </div>
+      )}
+
+      {status.state === 'mfa-needed' && hasTotp && (
         <form
           className="space-y-2"
           onSubmit={(e) => {
@@ -163,6 +181,21 @@ export function SyncAuth({
               >
                 Set up authenticator
               </button>
+              {passkeysAvailable() && (
+                <button
+                  disabled={busy}
+                  className={btn2}
+                  onClick={() =>
+                    void run(() =>
+                      window.api.sync.factors!.registerPasskey(
+                        `Passkey ${new Date().toLocaleDateString('en-CA')}`
+                      )
+                    )
+                  }
+                >
+                  Use a passkey instead
+                </button>
+              )}
             </>
           ) : (
             <form
@@ -239,6 +272,7 @@ export function SyncSettings(): React.JSX.Element {
           Signed in as <b>{s.email ?? 'your account'}</b>. Changes are saved to your FlowPT cloud
           account as you make them.
         </p>
+        <FactorSettings onChange={refresh} />
         <button
           disabled={busy}
           className={btn2}

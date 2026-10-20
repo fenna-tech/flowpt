@@ -49,6 +49,25 @@ reuse it. Instead the UI is shared and only the backend differs:
 - **Search:** patients are fetched and filtered in the browser (name, PHN, parent), the same rules as
   the desktop, which is fine at one practice's scale.
 
+## Passkeys (web only)
+
+Passkeys / security keys are an additional second factor (Supabase's WebAuthn MFA factor, which is
+still experimental), not a replacement for MFA: the aal2 requirement and the RLS policies are
+unchanged, and any verified factor satisfies them.
+
+- Add one in **Settings > Account > Sign-in verification**, or choose "Use a passkey instead" when
+  first setting up MFA. At sign-in, "Use passkey" appears if the account has one.
+- Keep the authenticator app as well: the desktop app cannot do WebAuthn (its Electron origin cannot
+  hold credentials), so desktop sign-in still needs a TOTP factor. The UI will not let you remove
+  your last factor.
+- Passkeys are bound to the site's domain. One registered on `localhost` will not work on the
+  production hostname; register again there. Changing the domain later orphans existing passkeys.
+- **Needs enabling on the project (not done):** Supabase dashboard > Authentication > MFA > turn on
+  WebAuthn enrol and verify (or add an `[auth.mfa.web_authn]` block with `enroll_enabled` and
+  `verify_enabled` to `supabase/config.toml` and push it; I did not edit that file). Until then,
+  "Add passkey" fails with a server error and TOTP is unaffected.
+- Not exercised against a live project or a real authenticator.
+
 ## Decisions and open questions
 
 1. **Not yet exercised against a live project.** It typechecks, lints and builds, and the sign-in

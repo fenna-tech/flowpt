@@ -368,7 +368,24 @@ export interface SyncStatus {
   conflicts: number; // drafts replaced by a locked server copy since launch
 }
 
+// A verified second factor on the account.
+export interface MfaFactorInfo {
+  id: string;
+  type: "totp" | "passkey";
+  name: string;
+}
+
+// Passkey / security-key second factors (WebAuthn). Browser-only: present on the web app, absent on
+// the desktop, whose Electron origin cannot hold WebAuthn credentials.
+export interface FactorApi {
+  list(): Promise<MfaFactorInfo[]>;
+  registerPasskey(name: string): Promise<{ state: SyncState }>; // enrols and verifies in one step
+  verifyPasskey(factorId: string): Promise<{ state: SyncState }>;
+  remove(factorId: string): Promise<void>; // needs an MFA-verified session
+}
+
 export interface SyncApi {
+  factors?: FactorApi;
   status(): Promise<SyncStatus>;
   configure(url: string, anonKey: string): Promise<void>;
   signUp(

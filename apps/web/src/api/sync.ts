@@ -1,5 +1,5 @@
 import { isAuthRetryableFetchError } from '@supabase/supabase-js'
-import type { SyncApi, SyncState, SyncStatus } from '@flowpt/shared'
+import type { FactorApi, MfaFactorInfo, SyncApi, SyncState, SyncStatus } from '@flowpt/shared'
 import { deviceId, forgetDevice, isConfigured, projectUrl, supabase } from './core'
 
 // Account sign-in for the web app: email + password, then mandatory TOTP MFA (AAL2). The same flow
@@ -54,7 +54,48 @@ const stateAfter = async (): Promise<SyncState> => {
   return state
 }
 
+const factors: FactorApi = {
+  async list() {
+    const { data, error } = await supabase.auth.mfa.listFactors()
+    if (error) throw new Error(error.message)
+    return data.all
+      .filter((f) => f.status === 'verified')
+      .flatMap((f): MfaFactorInfo[] =>
+        f.factor_type === 'totp' || f.factor_type === 'webauthn'
+          ? [
+              {
+                id: f.id,
+                type: f.factor_type === 'webauthn' ? 'passkey' : 'totp',
+                name: f.friendly_name ?? ''
+              }
+            ]
+          : []
+      )
+  },
+
+  // Passkeys are bound to this site's domain: one registered on localhost will not work on the
+  // production hostname, so register again there.
+  async registerPasskey(name) {
+    const friendlyName = name.trim().slice(0, 60) || 'Passkey'
+    const { error } = await supabase.auth.mfa.webauthn.register({ friendlyName })
+    if (error) throw new Error(error.message)
+    return { state: await stateAfter() }
+  },
+
+  async verifyPasskey(factorId) {
+    const { error } = await supabase.auth.mfa.webauthn.authenticate({ factorId })
+    if (error) throw new Error(error.message)
+    return { state: await stateAfter() }
+  },
+
+  async remove(factorId) {
+    const { error } = await supabase.auth.mfa.unenroll({ factorId })
+    if (error) throw new Error(error.message)
+  }
+}
+
 export const sync: SyncApi = {
+  factors,
   status,
 
   async configure() {
