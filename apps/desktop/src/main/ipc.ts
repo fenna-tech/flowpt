@@ -17,13 +17,7 @@ import {
   updateInvoice,
   voidInvoice
 } from './db/invoices'
-import {
-  getPractitioner,
-  listProfiles,
-  removeProfile,
-  saveProfile,
-  savePractitioner
-} from './db/settings'
+import { getPractitioner, listProfiles, savePractitioner } from './db/settings'
 import { exportInvoicePdf } from './pdf'
 import { getDashboard } from './dashboard'
 import { exportBackup, restoreFromFile } from './backup'
@@ -45,8 +39,7 @@ import {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Handler = (...args: any[]) => unknown
 
-const MUTATING =
-  /:(create|update|remove|sign|addAddendum|issue|markPaid|void|saveProfile|removeProfile|savePractitioner)$/
+const MUTATING = /:(create|update|remove|sign|addAddendum|issue|markPaid|void|savePractitioner)$/
 
 function guarded(channel: string, fn: Handler): void {
   ipcMain.handle(channel, async (_e, ...args) => {
@@ -91,8 +84,6 @@ export function registerIpc(): void {
   guarded('settings:getPractitioner', () => getPractitioner())
   guarded('settings:savePractitioner', (p) => savePractitioner(p))
   guarded('settings:listProfiles', () => listProfiles())
-  guarded('settings:saveProfile', (p) => saveProfile(p))
-  guarded('settings:removeProfile', (id: string) => removeProfile(id))
 
   guarded('audit:list', (patientId: string) => listAudit(patientId))
 

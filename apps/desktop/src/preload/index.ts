@@ -42,9 +42,7 @@ const invoices: InvoiceApi = {
 const settings: SettingsApi = {
   getPractitioner: () => ipcRenderer.invoke('settings:getPractitioner'),
   savePractitioner: (p) => ipcRenderer.invoke('settings:savePractitioner', p),
-  listProfiles: () => ipcRenderer.invoke('settings:listProfiles'),
-  saveProfile: (p) => ipcRenderer.invoke('settings:saveProfile', p),
-  removeProfile: (id) => ipcRenderer.invoke('settings:removeProfile', id)
+  listProfiles: () => ipcRenderer.invoke('settings:listProfiles')
 }
 
 const dashboard: DashboardApi = { get: () => ipcRenderer.invoke('dashboard:get') }

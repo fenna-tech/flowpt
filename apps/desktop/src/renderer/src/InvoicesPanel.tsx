@@ -126,7 +126,7 @@ function InvoiceEditor({
     <div className="space-y-4 card p-5">
       <div className="grid grid-cols-2 gap-3 text-sm">
         <label>
-          <span className="field-label">Billing profile</span>
+          <span className="field-label">Funding type</span>
           <select
             className={cell}
             disabled={!draft}

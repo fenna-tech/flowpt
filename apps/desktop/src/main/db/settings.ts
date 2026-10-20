@@ -1,8 +1,7 @@
-import { randomUUID } from 'crypto'
 import {
+  BILLING_PROFILES,
   PRIVATE_PROFILE,
   type BillingProfile,
-  type BillingProfileInput,
   type PractitionerProfile
 } from '@flowpt/shared'
 import { getDb } from './connection'
@@ -60,61 +59,9 @@ export function savePractitioner(p: PractitionerProfile): PractitionerProfile {
   return clean
 }
 
-type Definition = Omit<BillingProfile, 'id' | 'builtin'>
+export const listProfiles = (): BillingProfile[] => BILLING_PROFILES
 
-export function listProfiles(): BillingProfile[] {
-  const custom = (
-    getDb()
-      .prepare(
-        'SELECT id, definition FROM billing_profiles WHERE deleted_at IS NULL ORDER BY created_at'
-      )
-      .all() as { id: string; definition: string }[]
-  ).map((r) => ({ ...(JSON.parse(r.definition) as Definition), id: r.id, builtin: false }))
-  return [PRIVATE_PROFILE, ...custom]
-}
-
-// Old drafts may reference a removed profile; fall back to private pay rather than failing.
+// Drafts that reference a retired custom profile fall back to private pay rather than failing.
 export function getProfile(id: string): BillingProfile {
-  return listProfiles().find((p) => p.id === id) ?? PRIVATE_PROFILE
-}
-
-export function saveProfile(input: BillingProfileInput): BillingProfile {
-  if (input?.id === PRIVATE_PROFILE.id) throw new Error('The built-in profile cannot be changed')
-  const def: Definition = {
-    name: str(input?.name, 100),
-    payerLabel: str(input?.payerLabel, 50),
-    requirePolicyNumber: input?.requirePolicyNumber === true,
-    requireServiceCode: input?.requireServiceCode === true,
-    defaultTaxPct: Number.isFinite(input?.defaultTaxPct)
-      ? Math.min(100, Math.max(0, input.defaultTaxPct))
-      : 0,
-    footerNote: str(input?.footerNote, 1000)
-  }
-  if (!def.name) throw new Error('Profile name is required')
-  if (!def.payerLabel && (def.requirePolicyNumber || def.requireServiceCode)) {
-    throw new Error('A payer label is required when policy numbers or service codes are required')
-  }
-  const db = getDb()
-  if (input.id) {
-    const res = db
-      .prepare(
-        'UPDATE billing_profiles SET definition = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL'
-      )
-      .run(JSON.stringify(def), new Date().toISOString(), input.id)
-    if (res.changes === 0) throw new Error('Profile not found')
-    return { ...def, id: input.id, builtin: false }
-  }
-  const id = randomUUID()
-  const now = new Date().toISOString()
-  db.prepare(
-    'INSERT INTO billing_profiles (id, definition, created_at, updated_at) VALUES (?, ?, ?, ?)'
-  ).run(id, JSON.stringify(def), now, now)
-  return { ...def, id, builtin: false }
-}
-
-export function removeProfile(id: string): void {
-  if (id === PRIVATE_PROFILE.id) throw new Error('The built-in profile cannot be removed')
-  getDb()
-    .prepare('UPDATE billing_profiles SET deleted_at = ?, updated_at = ? WHERE id = ?')
-    .run(new Date().toISOString(), new Date().toISOString(), id)
+  return BILLING_PROFILES.find((p) => p.id === id) ?? PRIVATE_PROFILE
 }

@@ -36,9 +36,21 @@ export const BUILTIN_TEMPLATES: NoteTemplate[] = [
     id: 'soap',
     name: 'SOAP',
     sections: [
-      { key: 's', label: 'Subjective', hint: "Patient's reported symptoms and history" },
-      { key: 'o', label: 'Objective', hint: 'Observations, measurements, findings' },
-      { key: 'a', label: 'Assessment', hint: 'Clinical impression / diagnosis' },
+      {
+        key: 's',
+        label: 'Subjective',
+        hint: "Patient's reported symptoms and history"
+      },
+      {
+        key: 'o',
+        label: 'Objective',
+        hint: 'Observations, measurements, findings'
+      },
+      {
+        key: 'a',
+        label: 'Assessment',
+        hint: 'Clinical impression / diagnosis'
+      },
       { key: 'p', label: 'Plan', hint: 'Treatment, follow-up, referrals' }
     ]
   },
@@ -122,7 +134,7 @@ export interface PractitionerProfile {
   email: string
 }
 
-// Billing profiles are data. 'private' is built in; users add programs/insurers as custom profiles.
+// Funding types: a fixed set of billing profiles. Programs bill a named payer, private pay bills the patient.
 export interface BillingProfile {
   id: string
   name: string
@@ -134,18 +146,29 @@ export interface BillingProfile {
   footerNote: string // payment terms / claim instructions printed on the PDF
 }
 
-export type BillingProfileInput = Omit<BillingProfile, 'id' | 'builtin'> & { id?: string }
-
-export const PRIVATE_PROFILE: BillingProfile = {
-  id: 'private',
-  name: 'Private pay (patient)',
+const profile = (id: string, name: string, payerLabel: string): BillingProfile => ({
+  id,
+  name,
   builtin: true,
-  payerLabel: '',
+  payerLabel,
   requirePolicyNumber: false,
   requireServiceCode: false,
   defaultTaxPct: 0,
   footerNote: ''
-}
+})
+
+export const PRIVATE_PROFILE = profile(
+  'private',
+  'Private pay (patient pay and extended health)',
+  ''
+)
+export const AHP_PROFILE = profile(
+  'ahp',
+  'At Home Program School Age Extended Therapies (AHP)',
+  'Program'
+)
+export const AF_PROFILE = profile('af', 'Autism Funding (AF)', 'Program')
+export const BILLING_PROFILES: BillingProfile[] = [PRIVATE_PROFILE, AHP_PROFILE, AF_PROFILE]
 
 export interface LineItem {
   description: string
@@ -217,8 +240,6 @@ export interface SettingsApi {
   getPractitioner(): Promise<PractitionerProfile>
   savePractitioner(p: PractitionerProfile): Promise<PractitionerProfile>
   listProfiles(): Promise<BillingProfile[]>
-  saveProfile(p: BillingProfileInput): Promise<BillingProfile>
-  removeProfile(id: string): Promise<void>
 }
 
 // ---- Dashboard ----

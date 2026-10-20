@@ -1,10 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { SyncSettings } from './SyncPanel'
-import {
-  type BillingProfile,
-  type BillingProfileInput,
-  type PractitionerProfile
-} from '@flowpt/shared'
+import { type PractitionerProfile } from '@flowpt/shared'
 
 const inputCls = 'input'
 const msg = (err: unknown): string =>
@@ -20,15 +16,6 @@ const practitionerFields: { key: keyof PractitionerProfile; label: string }[] = 
   { key: 'phone', label: 'Phone' },
   { key: 'email', label: 'Email' }
 ]
-
-const emptyProfile: BillingProfileInput = {
-  name: '',
-  payerLabel: 'Insurer',
-  requirePolicyNumber: false,
-  requireServiceCode: false,
-  defaultTaxPct: 0,
-  footerNote: ''
-}
 
 function PractitionerForm(): React.JSX.Element {
   const [p, setP] = useState<PractitionerProfile | null>(null)
@@ -67,141 +54,6 @@ function PractitionerForm(): React.JSX.Element {
         <span className="text-sm text-slate-500">{status}</span>
       </div>
     </form>
-  )
-}
-
-function ProfilesManager(): React.JSX.Element {
-  const [profiles, setProfiles] = useState<BillingProfile[]>([])
-  const [editing, setEditing] = useState<BillingProfileInput | null>(null)
-  const [error, setError] = useState('')
-  const refresh = useCallback(() => window.api.settings.listProfiles().then(setProfiles), [])
-  useEffect(() => {
-    refresh()
-  }, [refresh])
-
-  const save = async (e: React.FormEvent): Promise<void> => {
-    e.preventDefault()
-    try {
-      await window.api.settings.saveProfile(editing!)
-      setEditing(null)
-      setError('')
-      await refresh()
-    } catch (err) {
-      setError(msg(err))
-    }
-  }
-
-  const remove = async (id: string): Promise<void> => {
-    if (!window.confirm('Remove this billing profile? Existing issued invoices are unaffected.'))
-      return
-    await window.api.settings.removeProfile(id)
-    await refresh()
-  }
-
-  return (
-    <div className="max-w-xl space-y-3">
-      <h2 className="section-title">Billing profiles</h2>
-      <p className="text-sm text-slate-500">
-        Private pay is built in. Add a profile for each insurer or program you bill, with the fields
-        it requires.
-      </p>
-      <ul className="divide-y divide-line card">
-        {profiles.map((p) => (
-          <li key={p.id} className="flex items-center gap-2 px-3 py-2 text-sm">
-            <span className="flex-1">{p.name}</span>
-            {p.builtin ? (
-              <span className="text-xs text-slate-400">built in</span>
-            ) : (
-              <>
-                <button className="link" onClick={() => setEditing(p)}>
-                  Edit
-                </button>
-                <button className="text-red-600 hover:underline" onClick={() => remove(p.id)}>
-                  Remove
-                </button>
-              </>
-            )}
-          </li>
-        ))}
-      </ul>
-      {!editing && (
-        <button onClick={() => setEditing(emptyProfile)} className="btn-primary">
-          + Add profile
-        </button>
-      )}
-      {editing && (
-        <form onSubmit={save} className="space-y-3 card p-4">
-          <label className="block text-sm">
-            <span className="field-label">Profile name (e.g. Sun Life claims)</span>
-            <input
-              className={inputCls}
-              value={editing.name}
-              onChange={(e) => setEditing({ ...editing, name: e.target.value })}
-            />
-          </label>
-          <label className="block text-sm">
-            <span className="field-label">
-              Payer label (e.g. Insurer, Program). Leave empty to bill the patient directly.
-            </span>
-            <input
-              className={inputCls}
-              value={editing.payerLabel}
-              onChange={(e) => setEditing({ ...editing, payerLabel: e.target.value })}
-            />
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={editing.requirePolicyNumber}
-              onChange={(e) => setEditing({ ...editing, requirePolicyNumber: e.target.checked })}
-            />
-            Require policy / claim number
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={editing.requireServiceCode}
-              onChange={(e) => setEditing({ ...editing, requireServiceCode: e.target.checked })}
-            />
-            Require a service code on every line
-          </label>
-          <label className="block text-sm">
-            <span className="field-label">Default tax %</span>
-            <input
-              className={inputCls}
-              inputMode="decimal"
-              value={editing.defaultTaxPct}
-              onChange={(e) =>
-                setEditing({ ...editing, defaultTaxPct: Number(e.target.value) || 0 })
-              }
-            />
-          </label>
-          <label className="block text-sm">
-            <span className="field-label">Footer text (payment terms, claim instructions)</span>
-            <textarea
-              className={inputCls}
-              rows={3}
-              value={editing.footerNote}
-              onChange={(e) => setEditing({ ...editing, footerNote: e.target.value })}
-            />
-          </label>
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          <div className="flex gap-2">
-            <button className="btn-primary">Save profile</button>
-            <button
-              type="button"
-              onClick={() => {
-                setEditing(null)
-                setError('')
-              }}
-              className="btn-secondary"
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      )}
-    </div>
   )
 }
 
@@ -287,7 +139,6 @@ export function SettingsPanel(): React.JSX.Element {
       <SyncSettings />
       <BackupSettings />
       <PractitionerForm />
-      <ProfilesManager />
     </div>
   )
 }
