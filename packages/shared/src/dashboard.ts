@@ -3,62 +3,59 @@ import {
   type DashboardData,
   type LineItem,
   type MonthlyRevenue,
-  type OutstandingInvoice,
-} from "./models";
+  type OutstandingInvoice
+} from './models'
 
 export interface DashboardInvoiceRow {
-  id: string;
-  number: string;
-  patientId: string;
-  patientName: string;
-  status: "issued" | "paid";
-  issueDate: string;
-  paidAt: string | null;
-  items: LineItem[];
-  taxPct: number;
+  id: string
+  number: string
+  patientId: string
+  patientName: string
+  status: 'issued' | 'paid'
+  issueDate: string
+  paidAt: string | null
+  items: LineItem[]
+  taxPct: number
 }
 
-const localDate = (d: Date): string => d.toLocaleDateString("en-CA"); // YYYY-MM-DD
-const dayMs = 86_400_000;
+const localDate = (d: Date): string => d.toLocaleDateString('en-CA') // YYYY-MM-DD
+const dayMs = 86_400_000
 
 // Cash-basis view for a solo practice, from issued/paid invoices (void and drafts excluded).
-export function buildDashboard(
-  rows: DashboardInvoiceRow[],
-  now = new Date(),
-): DashboardData {
-  const today = localDate(now);
-  const thisMonth = today.slice(0, 7);
-  const year = today.slice(0, 4);
+export function buildDashboard(rows: DashboardInvoiceRow[], now = new Date()): DashboardData {
+  const today = localDate(now)
+  const thisMonth = today.slice(0, 7)
+  const year = today.slice(0, 4)
 
-  const months: MonthlyRevenue[] = [];
+  const months: MonthlyRevenue[] = []
   for (let k = 11; k >= 0; k--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - k, 1);
+    const d = new Date(now.getFullYear(), now.getMonth() - k, 1)
     months.push({
       month: localDate(d).slice(0, 7),
       invoicedCents: 0,
-      collectedCents: 0,
-    });
+      collectedCents: 0
+    })
   }
-  const byMonth = new Map(months.map((m) => [m.month, m]));
+  const byMonth = new Map(months.map((m) => [m.month, m]))
 
-  const outstanding: OutstandingInvoice[] = [];
-  let collectedThisMonthCents = 0;
-  let collectedYtdCents = 0;
-  let invoicedYtdCents = 0;
+  const outstanding: OutstandingInvoice[] = []
+  let collectedThisMonthCents = 0
+  let collectedYtdCents = 0
+  let invoicedYtdCents = 0
 
   for (const r of rows) {
-    const total = computeTotals(r.items, r.taxPct).totalCents;
-    const issued = byMonth.get(r.issueDate.slice(0, 7));
-    if (issued) issued.invoicedCents += total;
-    if (r.issueDate.startsWith(year)) invoicedYtdCents += total;
+    const total = computeTotals(r.items, r.taxPct).totalCents
+    const issued = byMonth.get(r.issueDate.slice(0, 7))
+    if (issued) issued.invoicedCents += total
+    if (r.issueDate.startsWith(year)) invoicedYtdCents += total
 
-    if (r.status === "paid" && r.paidAt) {
-      const m = r.paidAt.slice(0, 7);
-      const bucket = byMonth.get(m);
-      if (bucket) bucket.collectedCents += total;
-      if (m === thisMonth) collectedThisMonthCents += total;
-      if (r.paidAt.startsWith(year)) collectedYtdCents += total;
-    } else if (r.status === "issued") {
+    if (r.status === 'paid' && r.paidAt) {
+      const m = r.paidAt.slice(0, 7)
+      const bucket = byMonth.get(m)
+      if (bucket) bucket.collectedCents += total
+      if (m === thisMonth) collectedThisMonthCents += total
+      if (r.paidAt.startsWith(year)) collectedYtdCents += total
+    } else if (r.status === 'issued') {
       outstanding.push({
         id: r.id,
         number: r.number,
@@ -68,13 +65,13 @@ export function buildDashboard(
         totalCents: total,
         daysOutstanding: Math.max(
           0,
-          Math.floor((Date.parse(today) - Date.parse(r.issueDate)) / dayMs),
-        ),
-      });
+          Math.floor((Date.parse(today) - Date.parse(r.issueDate)) / dayMs)
+        )
+      })
     }
   }
 
-  outstanding.sort((a, b) => b.daysOutstanding - a.daysOutstanding);
+  outstanding.sort((a, b) => b.daysOutstanding - a.daysOutstanding)
   return {
     outstanding,
     outstandingCents: outstanding.reduce((s, o) => s + o.totalCents, 0),
@@ -82,6 +79,6 @@ export function buildDashboard(
     collectedThisMonthCents,
     collectedYtdCents,
     invoicedYtdCents,
-    months,
-  };
+    months
+  }
 }
