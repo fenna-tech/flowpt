@@ -1,4 +1,6 @@
 @import 'tailwindcss';
+/* This package is linked from outside each app's root, so tell Tailwind to scan it. */
+@source '.';
 
 /* Design tokens: deep green brand, soft neutral surfaces, rounded cards. */
 @theme {

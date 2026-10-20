@@ -9,7 +9,7 @@ const btn2 = 'btn-secondary'
 // Small status line for the sidebar.
 export function SyncBadge(): React.JSX.Element | null {
   const [s] = useSyncStatus(10_000)
-  if (!s || s.state === 'unconfigured') return null
+  if (!s || s.state === 'unconfigured' || window.api.platform === 'web') return null
   let text = 'Cloud sync: sign in needed'
   let cls = 'text-amber-600'
   if (s.state === 'ready') {
@@ -230,6 +230,26 @@ export function SyncSettings(): React.JSX.Element {
   }
 
   if (!s) return <div />
+  // The web app has no local copy to sync: every change is saved to the cloud as it happens.
+  if (window.api.platform === 'web') {
+    return (
+      <div className="max-w-xl space-y-3">
+        <h2 className="section-title">Account</h2>
+        <p className="text-sm">
+          Signed in as <b>{s.email ?? 'your account'}</b>. Changes are saved to your FlowPT cloud
+          account as you make them.
+        </p>
+        <button
+          disabled={busy}
+          className={btn2}
+          onClick={() => void run(() => window.api.sync.signOut())}
+        >
+          Sign out
+        </button>
+        {note && <p className="text-sm text-slate-600">{note}</p>}
+      </div>
+    )
+  }
   // Managed builds ship with the cloud project built in; manual config only exists for dev builds.
   const showConfig = !s.managed && (s.state === 'unconfigured' || editConfig)
 

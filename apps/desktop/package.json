@@ -24,9 +24,9 @@
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
     "@flowpt/shared": "*",
+    "@flowpt/ui": "*",
     "@supabase/supabase-js": "^2.118.0",
-    "better-sqlite3-multiple-ciphers": "^13.0.3",
-    "recharts": "^3.10.1"
+    "better-sqlite3-multiple-ciphers": "^13.0.3"
   },
   "devDependencies": {
     "@electron-toolkit/eslint-config-prettier": "^3.0.1",
